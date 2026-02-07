@@ -1,0 +1,26 @@
+{
+  "name": "shaderui",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "dev": "npm run dev --workspace=packages/site",
+    "build": "npm run build --workspaces",
+    "build:lib": "npm run build --workspace=packages/lib",
+    "build:site": "npm run build --workspace=packages/site",
+    "preview": "npm run preview --workspace=packages/site"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "unplugin-typegpu": "^0.9.0",
+    "vite": "^7.2.4"
+  },
+  "dependencies": {
+    "@typegpu/noise": "0.9.0",
+    "@typegpu/sdf": "0.9.0",
+    "typegpu": "0.9.0",
+    "webgpu": "^0.3.8",
+    "wgpu-matrix": "^3.4.0"
+  }
+}
