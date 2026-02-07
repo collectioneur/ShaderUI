@@ -32,13 +32,22 @@ export const CursorParams = d.struct({
   cursorUV: d.vec2f,
   radius: d.f32,
 });
+export const NeonBlurParams = d.struct({
+  intensity: d.f32,
+  radius: d.f32,
+  aberration: d.f32,
+  colorPrimary: d.vec3f,
+  colorSecondary: d.vec3f,
+});
 export const ShaderCompositionParams = d.struct({
   waveEnabled: d.u32,
   gradientEnabled: d.u32,
   cursorEnabled: d.u32,
+  neonBlurEnabled: d.u32,
   wave: WaveParams,
   gradient: GradientParams,
   cursor: CursorParams,
+  neonBlur: NeonBlurParams,
 });
 export const shaderCompositionAccessor =
   tgpu["~unstable"].accessor(ShaderCompositionParams);

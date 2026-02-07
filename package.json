@@ -3,9 +3,13 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "npm run dev --workspace=packages/site",
+    "dev": "npm run dev:lib & npm run dev:site",
+    "dev:site": "cd packages/site && npx vite",
+    "dev:lib": "cd packages/lib && npx vite build --watch",
     "build": "npm run build --workspaces",
     "build:lib": "npm run build --workspace=packages/lib",
     "build:site": "npm run build --workspace=packages/site",

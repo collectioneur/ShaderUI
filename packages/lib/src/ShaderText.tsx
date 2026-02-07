@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback } from "react";
+import React, { useRef, useEffect, useCallback, useState } from "react";
 import tgpu from "typegpu";
 import * as d from "typegpu/data";
 import { fullScreenTriangle } from "typegpu/common";
@@ -13,9 +13,12 @@ import {
 } from "./index.ts";
 import { ShaderCompositionParams } from "./types.ts";
 
-const PADDING = 16;
+const PADDING = 150;
 
-function measureTextSize(text: string, font: FontConfig): { width: number; height: number } {
+function measureTextSize(
+  text: string,
+  font: FontConfig,
+): { width: number; height: number } {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
   const fontStr = `${font.weight ?? 600} ${font.size}px ${font.family}, sans-serif`;
@@ -30,12 +33,14 @@ function createMaskFromText(
   width: number,
   height: number,
   text: string,
-  font: FontConfig
+  font: FontConfig,
 ): Uint32Array {
   const textCanvas = document.createElement("canvas");
   textCanvas.width = width;
   textCanvas.height = height;
   const textCtx = textCanvas.getContext("2d") as CanvasRenderingContext2D;
+  const dpr = window.devicePixelRatio ?? 1;
+  textCtx.scale(dpr, dpr);
   const fontStr = `${font.weight ?? 600} ${font.size}px ${font.family}, sans-serif`;
   textCtx.font = fontStr;
   textCtx.fillText(text, PADDING, PADDING + font.size);
@@ -51,6 +56,7 @@ interface CompositionParamsValue {
   waveEnabled: number;
   gradientEnabled: number;
   cursorEnabled: number;
+  neonBlurEnabled: number;
   wave: { speed: number; amplitude: number };
   gradient: {
     angle: number;
@@ -58,19 +64,28 @@ interface CompositionParamsValue {
     color1: ReturnType<typeof d.vec3f>;
   };
   cursor: { cursorUV: ReturnType<typeof d.vec2f>; radius: number };
+  neonBlur: {
+    intensity: number;
+    radius: number;
+    aberration: number;
+    colorPrimary: ReturnType<typeof d.vec3f>;
+    colorSecondary: ReturnType<typeof d.vec3f>;
+  };
 }
 
 function buildCompositionParams(
   shaders: ShaderConfig[],
-  cursorUV: [number, number]
+  cursorUV: [number, number],
 ): CompositionParamsValue {
   const wave = shaders.find((s) => s.id === "wave");
   const gradient = shaders.find((s) => s.id === "gradient");
   const cursorGlow = shaders.find((s) => s.id === "cursorGlow");
+  const neonBlur = shaders.find((s) => s.id === "neonBlur");
 
   const waveDef = getShaderDef("wave");
   const gradientDef = getShaderDef("gradient");
   const cursorDef = getShaderDef("cursorGlow");
+  const neonBlurDef = getShaderDef("neonBlur");
 
   const waveProps = (wave?.props ?? waveDef?.defaultProps) as {
     speed?: number;
@@ -84,11 +99,19 @@ function buildCompositionParams(
   const cursorProps = (cursorGlow?.props ?? cursorDef?.defaultProps) as {
     radius?: number;
   };
+  const neonBlurProps = (neonBlur?.props ?? neonBlurDef?.defaultProps) as {
+    intensity?: number;
+    radius?: number;
+    aberration?: number;
+    colorPrimary?: [number, number, number];
+    colorSecondary?: [number, number, number];
+  };
 
   return {
     waveEnabled: shaders.some((s) => s.id === "wave") ? 1 : 0,
     gradientEnabled: shaders.some((s) => s.id === "gradient") ? 1 : 0,
     cursorEnabled: shaders.some((s) => s.id === "cursorGlow") ? 1 : 0,
+    neonBlurEnabled: shaders.some((s) => s.id === "neonBlur") ? 1 : 0,
     wave: {
       speed: waveProps?.speed ?? 1,
       amplitude: waveProps?.amplitude ?? 0.02,
@@ -98,17 +121,32 @@ function buildCompositionParams(
       color0: d.vec3f(
         gradientProps?.color0?.[0] ?? 0.1,
         gradientProps?.color0?.[1] ?? 0.1,
-        gradientProps?.color0?.[2] ?? 0.4
+        gradientProps?.color0?.[2] ?? 0.4,
       ),
       color1: d.vec3f(
         gradientProps?.color1?.[0] ?? 0.9,
         gradientProps?.color1?.[1] ?? 0.4,
-        gradientProps?.color1?.[2] ?? 0.2
+        gradientProps?.color1?.[2] ?? 0.2,
       ),
     },
     cursor: {
       cursorUV: d.vec2f(cursorUV[0], cursorUV[1]),
       radius: cursorProps?.radius ?? 0.3,
+    },
+    neonBlur: {
+      intensity: neonBlurProps?.intensity ?? 1.5,
+      radius: neonBlurProps?.radius ?? 8,
+      aberration: neonBlurProps?.aberration ?? 2,
+      colorPrimary: d.vec3f(
+        neonBlurProps?.colorPrimary?.[0] ?? 0.2,
+        neonBlurProps?.colorPrimary?.[1] ?? 0.8,
+        neonBlurProps?.colorPrimary?.[2] ?? 1.0,
+      ),
+      colorSecondary: d.vec3f(
+        neonBlurProps?.colorSecondary?.[0] ?? 0.6,
+        neonBlurProps?.colorSecondary?.[1] ?? 0.2,
+        neonBlurProps?.colorSecondary?.[2] ?? 0.9,
+      ),
     },
   };
 }
@@ -130,9 +168,13 @@ export function ShaderText({
 }: ShaderTextProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [containerSize, setContainerSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
   const rootRef = useRef<Awaited<ReturnType<typeof tgpu.init>> | null>(null);
   const sdfPipelineRef = useRef<ReturnType<typeof createSDFPipeline> | null>(
-    null
+    null,
   );
   const timeUniformRef = useRef<{ write: (v: number) => void } | null>(null);
   const compositionUniformRef = useRef<{
@@ -148,7 +190,7 @@ export function ShaderText({
     async (
       root: Awaited<ReturnType<typeof tgpu.init>>,
       width: number,
-      height: number
+      height: number,
     ) => {
       if (sdfPipelineRef.current) {
         sdfPipelineRef.current.destroy();
@@ -158,7 +200,7 @@ export function ShaderText({
       const maskData = createMaskFromText(width, height, text, font);
       pipeline.run(maskData);
     },
-    [text, font]
+    [text, font],
   );
 
   useEffect(() => {
@@ -168,10 +210,11 @@ export function ShaderText({
     if (!container || !canvas) return;
 
     const { width: measuredW, height: measuredH } = measureTextSize(text, font);
+    console.log(measuredW, measuredH);
     const cssW = measuredW + 2 * PADDING;
     const cssH = measuredH + 2 * PADDING;
-    container.style.width = `${cssW}px`;
-    container.style.height = `${cssH}px`;
+    console.log(cssW, cssH);
+    setContainerSize({ width: cssW, height: cssH });
 
     const dpr = window.devicePixelRatio ?? 1;
     const width = Math.max(1, Math.floor(cssW * dpr));
@@ -201,7 +244,7 @@ export function ShaderText({
 
       const compositionUniform = root.createUniform(
         ShaderCompositionParams,
-        buildCompositionParams(shaders, cursorRef.current)
+        buildCompositionParams(shaders, cursorRef.current),
       );
       compositionUniformRef.current = compositionUniform;
 
@@ -223,7 +266,7 @@ export function ShaderText({
         if (!rootVal) return;
         timeUniform.write(performance.now() / 1000);
         compositionUniform.write(
-          buildCompositionParams(shadersRef.current, cursorRef.current)
+          buildCompositionParams(shadersRef.current, cursorRef.current),
         );
         const colorAttachment = {
           view: ctx.getCurrentTexture().createView(),
@@ -263,7 +306,7 @@ export function ShaderText({
 
   useEffect(() => {
     compositionUniformRef.current?.write?.(
-      buildCompositionParams(shaders, cursorRef.current)
+      buildCompositionParams(shaders, cursorRef.current),
     );
   }, [shaders]);
 
@@ -276,13 +319,20 @@ export function ShaderText({
       const y = (e.clientY - rect.top) / rect.height;
       cursorRef.current = [x, y];
     },
-    []
+    [],
   );
 
   return (
     <div
       ref={containerRef}
-      style={{ display: "inline-block", ...style }}
+      style={{
+        display: "inline-block",
+        ...style,
+        ...(containerSize && {
+          width: containerSize.width,
+          height: containerSize.height,
+        }),
+      }}
       className={className}
     >
       <canvas
