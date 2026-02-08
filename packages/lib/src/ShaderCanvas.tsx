@@ -1,17 +1,8 @@
 import React, { useRef, useEffect, useCallback, useState } from "react";
 import tgpu from "typegpu";
-import * as d from "typegpu/data";
 import { fullScreenTriangle } from "typegpu/common";
 import { createSDFPipeline } from "./sdfPipeline.ts";
-import {
-  composedFrag,
-  shaderCompositionAccessor,
-  timeAccessor,
-  getShaderDef,
-  type ShaderConfig,
-  type FontConfig,
-} from "./index.ts";
-import { ShaderCompositionParams } from "./types.ts";
+import type { FontConfig, MaskSource } from "./types.ts";
 
 const PADDING = 150;
 
@@ -52,63 +43,64 @@ function createMaskFromText(
   return maskData;
 }
 
-interface CompositionParamsValue {
-  neonBlurEnabled: number;
-  neonBlur: {
-    intensity: number;
-    radius: number;
-    aberration: number;
-    colorPrimary: ReturnType<typeof d.vec3f>;
-    colorSecondary: ReturnType<typeof d.vec3f>;
-  };
+export function getSize(source: MaskSource): { width: number; height: number } {
+  switch (source.type) {
+    case "text": {
+      const { width, height } = measureTextSize(source.text, source.font);
+      return {
+        width: width + 2 * PADDING,
+        height: height + 2 * PADDING,
+      };
+    }
+    case "image":
+    case "svg":
+      return { width: 0, height: 0 };
+    default:
+      return { width: 0, height: 0 };
+  }
 }
 
-function buildCompositionParams(shaders: ShaderConfig[]): CompositionParamsValue {
-  const neonBlur = shaders.find((s) => s.id === "neonBlur");
-  const neonBlurDef = getShaderDef("neonBlur");
-  const neonBlurProps = (neonBlur?.props ?? neonBlurDef?.defaultProps) as {
-    intensity?: number;
-    radius?: number;
-    aberration?: number;
-    colorPrimary?: [number, number, number];
-    colorSecondary?: [number, number, number];
-  };
-
-  return {
-    neonBlurEnabled: shaders.some((s) => s.id === "neonBlur") ? 1 : 0,
-    neonBlur: {
-      intensity: neonBlurProps?.intensity ?? 1.5,
-      radius: neonBlurProps?.radius ?? 8,
-      aberration: neonBlurProps?.aberration ?? 2,
-      colorPrimary: d.vec3f(
-        neonBlurProps?.colorPrimary?.[0] ?? 0.2,
-        neonBlurProps?.colorPrimary?.[1] ?? 0.8,
-        neonBlurProps?.colorPrimary?.[2] ?? 1.0,
-      ),
-      colorSecondary: d.vec3f(
-        neonBlurProps?.colorSecondary?.[0] ?? 0.6,
-        neonBlurProps?.colorSecondary?.[1] ?? 0.2,
-        neonBlurProps?.colorSecondary?.[2] ?? 0.9,
-      ),
-    },
-  };
+export function getMaskData(
+  source: MaskSource,
+  width: number,
+  height: number,
+): Uint32Array {
+  switch (source.type) {
+    case "text":
+      return createMaskFromText(width, height, source.text, source.font);
+    case "image":
+    case "svg":
+      return new Uint32Array(width * height);
+    default:
+      return new Uint32Array(width * height);
+  }
 }
 
-export interface ShaderTextProps {
-  text: string;
-  font: FontConfig;
-  shaders?: ShaderConfig[];
+/** Single uniform binding: accessor + struct type + getter for current value. */
+export interface UniformBinding {
+  accessor: unknown;
+  struct: unknown;
+  getValue: () => unknown;
+}
+
+export interface ShaderCanvasProps {
+  /** Mask source (text, image URL, or SVG). Only text is implemented. */
+  source: MaskSource;
+  /** Fragment shader (TypeGPU fragmentFn). Must sample SDF from distSampleLayout. */
+  fragment: unknown;
+  /** Ref to uniform bindings array. getValue() is called each frame on the GPU loop. */
+  uniformBindingsRef: React.RefObject<UniformBinding[]>;
   style?: React.CSSProperties;
   className?: string;
 }
 
-export function ShaderText({
-  text,
-  font,
-  shaders = [],
+export const ShaderCanvas = React.memo(function ShaderCanvas({
+  source,
+  fragment,
+  uniformBindingsRef,
   style = {},
   className,
-}: ShaderTextProps) {
+}: ShaderCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [containerSize, setContainerSize] = useState<{
@@ -119,13 +111,8 @@ export function ShaderText({
   const sdfPipelineRef = useRef<ReturnType<typeof createSDFPipeline> | null>(
     null,
   );
-  const timeUniformRef = useRef<{ write: (v: number) => void } | null>(null);
-  const compositionUniformRef = useRef<{
-    write: (v: CompositionParamsValue) => void;
-  } | null>(null);
+  const uniformsRef = useRef<{ write: (v: unknown) => void }[]>([]);
   const renderPipelineRef = useRef<unknown>(null);
-  const shadersRef = useRef<ShaderConfig[]>(shaders);
-  shadersRef.current = shaders;
   const rafRef = useRef<number>(0);
 
   const runPipeline = useCallback(
@@ -139,10 +126,10 @@ export function ShaderText({
       }
       const pipeline = createSDFPipeline(root, width, height);
       sdfPipelineRef.current = pipeline;
-      const maskData = createMaskFromText(width, height, text, font);
+      const maskData = getMaskData(source, width, height);
       pipeline.run(maskData);
     },
-    [text, font],
+    [source],
   );
 
   useEffect(() => {
@@ -151,11 +138,8 @@ export function ShaderText({
     const canvas = canvasRef.current;
     if (!container || !canvas) return;
 
-    const { width: measuredW, height: measuredH } = measureTextSize(text, font);
-    console.log(measuredW, measuredH);
-    const cssW = measuredW + 2 * PADDING;
-    const cssH = measuredH + 2 * PADDING;
-    console.log(cssW, cssH);
+    const { width: cssW, height: cssH } = getSize(source);
+    if (cssW <= 0 || cssH <= 0) return;
     setContainerSize({ width: cssW, height: cssH });
 
     const dpr = window.devicePixelRatio ?? 1;
@@ -181,24 +165,37 @@ export function ShaderText({
         alphaMode: "premultiplied",
       });
 
-      const timeUniform = root.createUniform(d.f32);
-      timeUniformRef.current = timeUniform;
-
-      const compositionUniform = root.createUniform(
-        ShaderCompositionParams,
-        buildCompositionParams(shaders),
-      );
-      compositionUniformRef.current = compositionUniform;
+      const bindings = uniformBindingsRef.current ?? [];
+      const uniforms: { write: (v: unknown) => void }[] = [];
+      let builder: unknown = root["~unstable"];
+      for (let i = 0; i < bindings.length; i++) {
+        const b = bindings[i];
+        const uniform = (root.createUniform(
+          b.struct as Parameters<typeof root.createUniform>[0],
+          b.getValue() as Parameters<typeof root.createUniform>[1],
+        ) as { write: (v: unknown) => void; $name: (n: string) => unknown })
+          .$name(`u_${i}`) as { write: (v: unknown) => void };
+        uniforms.push({ write: uniform.write.bind(uniform) });
+        builder = (builder as { with: (accessor: unknown, resource: unknown) => unknown }).with(b.accessor, uniform);
+      }
+      uniformsRef.current = uniforms;
 
       await runPipeline(root, width, height);
       if (cancelled) return;
 
-      const renderPipeline = root["~unstable"]
-        .with(timeAccessor, timeUniform)
-        .with(shaderCompositionAccessor, compositionUniform)
+      const pipelineBuilder = builder as {
+        withVertex: (v: unknown) => { withFragment: (f: unknown, opts: { format: GPUTextureFormat }) => { createPipeline: () => unknown } };
+      };
+
+      root.device.pushErrorScope("validation");
+      const renderPipeline = pipelineBuilder
         .withVertex(fullScreenTriangle)
-        .withFragment(composedFrag, { format: presentationFormat })
+        .withFragment(fragment, { format: presentationFormat })
         .createPipeline();
+      const gpuError = await root.device.popErrorScope();
+      if (gpuError) {
+        console.error("[ShaderCanvas] Pipeline creation error:", gpuError.message);
+      }
       renderPipelineRef.current = renderPipeline;
 
       function render() {
@@ -206,8 +203,11 @@ export function ShaderText({
           return;
         const rootVal = rootRef.current;
         if (!rootVal) return;
-        timeUniform.write(performance.now() / 1000);
-        compositionUniform.write(buildCompositionParams(shadersRef.current));
+        const bindingsNow = uniformBindingsRef.current ?? [];
+        const uniformsNow = uniformsRef.current;
+        for (let i = 0; i < uniformsNow.length && i < bindingsNow.length; i++) {
+          uniformsNow[i].write(bindingsNow[i].getValue());
+        }
         const colorAttachment = {
           view: ctx.getCurrentTexture().createView(),
           loadOp: "clear" as const,
@@ -215,11 +215,9 @@ export function ShaderText({
           storeOp: "store" as const,
         };
         const rp = renderPipelineRef.current as {
-          with: (a: unknown) => unknown;
+          with: (a: unknown) => { withColorAttachment: (c: unknown) => { draw: (n: number) => void } };
         };
-        const rp1 = rp.with(sdfPipelineRef.current.renderBindGroup) as {
-          withColorAttachment: (c: unknown) => { draw: (n: number) => void };
-        };
+        const rp1 = rp.with(sdfPipelineRef.current.renderBindGroup);
         rp1.withColorAttachment(colorAttachment).draw(3);
         rafRef.current = requestAnimationFrame(render);
       }
@@ -228,8 +226,7 @@ export function ShaderText({
 
     init();
     return () => {
-      compositionUniformRef.current = null;
-      timeUniformRef.current = null;
+      uniformsRef.current = [];
       renderPipelineRef.current = null;
       cancelled = true;
       cancelAnimationFrame(rafRef.current);
@@ -242,11 +239,7 @@ export function ShaderText({
         rootRef.current = null;
       }
     };
-  }, [runPipeline, text, font]);
-
-  useEffect(() => {
-    compositionUniformRef.current?.write?.(buildCompositionParams(shaders));
-  }, [shaders]);
+  }, [runPipeline, source, fragment]);
 
   return (
     <div
@@ -264,4 +257,4 @@ export function ShaderText({
       <canvas ref={canvasRef} style={{ display: "block" }} />
     </div>
   );
-}
+});

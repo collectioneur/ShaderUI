@@ -1,16 +1,5 @@
 declare module "@shaderui/lib" {
-  import type { CSSProperties } from "react";
-
-  export type ShaderType = "shape" | "color" | "interaction";
-
-  export interface ShaderConfig<
-    T extends ShaderType = ShaderType,
-    P = Record<string, unknown>
-  > {
-    id: string;
-    type: T;
-    props: P;
-  }
+  import type { CSSProperties, RefObject } from "react";
 
   export interface FontConfig {
     family: string;
@@ -18,30 +7,45 @@ declare module "@shaderui/lib" {
     weight?: number;
   }
 
-  export interface ShaderTextProps {
-    text: string;
-    font: FontConfig;
-    shaders?: ShaderConfig[];
+  export type MaskSource =
+    | { type: "text"; text: string; font: FontConfig }
+    | { type: "image"; url: string }
+    | { type: "svg"; node: SVGElement };
+
+  export interface UniformBinding {
+    accessor: unknown;
+    struct: unknown;
+    getValue: () => unknown;
+  }
+
+  export interface ShaderCanvasProps {
+    source: MaskSource;
+    fragment: unknown;
+    uniformBindingsRef: RefObject<UniformBinding[]>;
     style?: CSSProperties;
     className?: string;
   }
 
-  export interface ShaderDef<P = Record<string, unknown>> {
-    id: string;
-    type: ShaderType;
-    label: string;
-    defaultProps: P;
-    propSchema: {
-      key: keyof P & string;
-      label: string;
-      min?: number;
-      max?: number;
-      step?: number;
-    }[];
-  }
+  export function getSize(source: MaskSource): { width: number; height: number };
+  export function getMaskData(
+    source: MaskSource,
+    width: number,
+    height: number
+  ): Uint32Array;
+  export const ShaderCanvas: React.MemoExoticComponent<(props: ShaderCanvasProps) => JSX.Element>;
 
-  export function ShaderText(props: ShaderTextProps): JSX.Element;
-  export const shaderRegistry: ShaderDef[];
-  export function getShaderDef(id: string): ShaderDef | undefined;
-  export function getShadersByType<T extends ShaderType>(type: T): ShaderDef[];
+  /** SDF texture + sampler bind group layout; fragment shaders use distSampleLayout.$.distTexture and .$.sampler */
+  export const distSampleLayout: { $: { distTexture: any; sampler: any } };
+
+  export function createSDFPipeline(
+    root: unknown,
+    width: number,
+    height: number
+  ): unknown;
+  export type SDFPipelineRoot = unknown;
+
+  export const distanceFrag: unknown;
+  export const paramsAccessor: unknown;
+  export const timeAccessor: unknown;
+  export type VisualizationParams = unknown;
 }

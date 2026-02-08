@@ -10,7 +10,13 @@ export default defineConfig({
       fileName: "index",
     },
     rollupOptions: {
-      external: ["react", "react-dom"],
+      external: [
+        "react",
+        "react-dom",
+        "typegpu",
+        /^typegpu\//,
+        /^@typegpu\//,
+      ],
     },
     sourcemap: true,
   },

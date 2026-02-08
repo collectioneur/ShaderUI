@@ -18,20 +18,18 @@ export const SampleResult = d.struct({
 export const paramsAccessor = tgpu["~unstable"].accessor(VisualizationParams);
 export const timeAccessor = tgpu["~unstable"].accessor(d.f32);
 
-// Shader composition uniforms
-export const NeonBlurParams = d.struct({
-  intensity: d.f32,
-  radius: d.f32,
-  aberration: d.f32,
-  colorPrimary: d.vec3f,
-  colorSecondary: d.vec3f,
-});
-export const ShaderCompositionParams = d.struct({
-  neonBlurEnabled: d.u32,
-  neonBlur: NeonBlurParams,
-});
-export const shaderCompositionAccessor =
-  tgpu["~unstable"].accessor(ShaderCompositionParams);
+/** Font descriptor for text mask source. */
+export interface FontConfig {
+  family: string;
+  size: number;
+  weight?: number;
+}
+
+/** Mask source: currently text only. Image/SVG can be added later. */
+export type MaskSource =
+  | { type: "text"; text: string; font: FontConfig }
+  | { type: "image"; url: string }
+  | { type: "svg"; node: SVGElement };
 
 export const distSampleLayout = tgpu.bindGroupLayout({
   distTexture: { texture: d.texture2d() },

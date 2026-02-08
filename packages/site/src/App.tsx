@@ -1,12 +1,6 @@
 import { useState, useCallback } from "react";
-import {
-  ShaderText,
-  getShadersByType,
-  getShaderDef,
-  type ShaderConfig,
-  type FontConfig,
-  type ShaderDef,
-} from "@shaderui/lib";
+import { type FontConfig } from "@shaderui/lib";
+import { NeonText } from "./presets/NeonText";
 
 const FONT_FAMILIES = [
   "Inter",
@@ -35,116 +29,6 @@ function rgbToHex(r: number, g: number, b: number): string {
   );
 }
 
-function ShaderControl({
-  def,
-  enabled,
-  props,
-  onToggle,
-  onPropsChange,
-}: {
-  def: ShaderDef;
-  enabled: boolean;
-  props: Record<string, unknown>;
-  onToggle: (v: boolean) => void;
-  onPropsChange: (props: Record<string, unknown>) => void;
-}) {
-  return (
-    <div
-      style={{
-        marginBottom: "1rem",
-        padding: "0.75rem",
-        background: "#f0f0f0",
-        borderRadius: 8,
-      }}
-    >
-      <label
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          marginBottom: enabled ? 8 : 0,
-        }}
-      >
-        <input
-          type="checkbox"
-          checked={enabled}
-          onChange={(e) => onToggle(e.target.checked)}
-        />
-        <span style={{ fontWeight: 600 }}>{def.label}</span>
-      </label>
-      {enabled &&
-        def.propSchema.map(
-          (schema: {
-            key: string;
-            label: string;
-            min?: number;
-            max?: number;
-            step?: number;
-          }) => {
-            const key = schema.key as string;
-            const value = props[key];
-            if (schema.min !== undefined && typeof value === "number") {
-              return (
-                <div key={key} style={{ marginTop: 6 }}>
-                  <label
-                    style={{ display: "block", fontSize: 12, marginBottom: 2 }}
-                  >
-                    {schema.label}
-                  </label>
-                  <input
-                    type="range"
-                    min={schema.min}
-                    max={schema.max ?? 1}
-                    step={schema.step ?? 0.01}
-                    value={value}
-                    onChange={(e) =>
-                      onPropsChange({
-                        ...props,
-                        [key]: Number(e.target.value),
-                      })
-                    }
-                  />
-                  <span style={{ marginLeft: 8, fontSize: 12 }}>{value}</span>
-                </div>
-              );
-            }
-            if (
-              (key === "color0" || key === "color1") &&
-              Array.isArray(value) &&
-              value.length === 3
-            ) {
-              const hex = rgbToHex(
-                value[0] as number,
-                value[1] as number,
-                value[2] as number,
-              );
-              return (
-                <div key={key} style={{ marginTop: 6 }}>
-                  <label
-                    style={{ display: "block", fontSize: 12, marginBottom: 2 }}
-                  >
-                    {schema.label}
-                  </label>
-                  <input
-                    type="color"
-                    value={hex}
-                    onChange={(e) =>
-                      onPropsChange({
-                        ...props,
-                        [key]: hexToRgb(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-              );
-            }
-            return null;
-          },
-        )}
-    </div>
-  );
-}
-
 export default function App() {
   const [text, setText] = useState("Hello");
   const [font, setFont] = useState<FontConfig>({
@@ -152,59 +36,32 @@ export default function App() {
     size: 120,
     weight: 600,
   });
-  const [shaders, setShaders] = useState<ShaderConfig[]>([
-    {
-      id: "neonBlur",
-      type: "color",
-      props: {
-        intensity: 1.5,
-        radius: 8,
-        aberration: 2,
-        colorPrimary: [0.2, 0.8, 1],
-        colorSecondary: [0.6, 0.2, 0.9],
-      },
-    },
+  const [intensity, setIntensity] = useState(1.5);
+  const [radius, setRadius] = useState(8);
+  const [aberration, setAberration] = useState(2);
+  const [colorPrimary, setColorPrimary] = useState<[number, number, number]>([
+    0.2, 0.8, 1,
+  ]);
+  const [colorSecondary, setColorSecondary] = useState<[number, number, number]>([
+    0.6, 0.2, 0.9,
   ]);
 
-  const toggleShader = useCallback((id: string, enabled: boolean) => {
-    const def = getShaderDef(id);
-    if (!def) return;
-    if (enabled) {
-      setShaders((prev) => [
-        ...prev.filter((s) => s.id !== id),
-        { id: def.id, type: def.type, props: { ...def.defaultProps } },
-      ]);
-    } else {
-      setShaders((prev) => prev.filter((s) => s.id !== id));
-    }
-  }, []);
-
-  const updateShaderProps = useCallback(
-    (id: string, props: Record<string, unknown>) => {
-      setShaders((prev) =>
-        prev.map((s) => (s.id === id ? { ...s, props } : s)),
-      );
-    },
-    [],
-  );
-
   const copyComponent = useCallback(() => {
-    const shadersStr = JSON.stringify(shaders, null, 2);
-    const code = `<ShaderText
+    const code = `<NeonText
   text="${text.replace(/"/g, '\\"')}"
   font={{ family: "${font.family}", size: ${font.size}, weight: ${font.weight} }}
-  shaders={${shadersStr}}
+  intensity={${intensity}}
+  radius={${radius}}
+  aberration={${aberration}}
+  colorPrimary={[${colorPrimary.join(", ")}]}
+  colorSecondary={[${colorSecondary.join(", ")}]}
 />`;
-    const full = `import { ShaderText } from "@shaderui/lib";
+    const full = `import { NeonText } from "./presets/NeonText";
 
 ${code}`;
     void navigator.clipboard.writeText(full);
     alert("Copied to clipboard!");
-  }, [text, font, shaders]);
-
-  const shapeShaders = getShadersByType("shape");
-  const colorShaders = getShadersByType("color");
-  const interactionShaders = getShadersByType("interaction");
+  }, [text, font, intensity, radius, aberration, colorPrimary, colorSecondary]);
 
   return (
     <div
@@ -228,7 +85,7 @@ ${code}`;
         }}
       >
         <h1 style={{ margin: 0, fontSize: "1.25rem" }}>
-          ShaderText Playground
+          ShaderUI Playground
         </h1>
         <button
           type="button"
@@ -287,7 +144,7 @@ ${code}`;
               <select
                 value={font.family}
                 onChange={(e) =>
-                  setFont((f: FontConfig) => ({ ...f, family: e.target.value }))
+                  setFont((f) => ({ ...f, family: e.target.value }))
                 }
                 style={{ padding: 8, borderRadius: 6 }}
               >
@@ -302,7 +159,7 @@ ${code}`;
                   type="number"
                   value={font.size}
                   onChange={(e) =>
-                    setFont((f: FontConfig) => ({
+                    setFont((f) => ({
                       ...f,
                       size: Number(e.target.value) || 48,
                     }))
@@ -318,7 +175,7 @@ ${code}`;
                   type="number"
                   value={font.weight}
                   onChange={(e) =>
-                    setFont((f: FontConfig) => ({
+                    setFont((f) => ({
                       ...f,
                       weight: Number(e.target.value) || 400,
                     }))
@@ -334,60 +191,104 @@ ${code}`;
           </section>
 
           <section style={{ marginBottom: 16 }}>
-            <h3 style={{ margin: "0 0 8px", fontSize: 14 }}>Shape</h3>
-            {shapeShaders.map((def: ShaderDef) => (
-              <ShaderControl
-                key={def.id}
-                def={def}
-                enabled={shaders.some((s) => s.id === def.id)}
-                props={
-                  (shaders.find((s) => s.id === def.id)?.props as Record<
-                    string,
-                    unknown
-                  >) ?? (def.defaultProps as Record<string, unknown>)
-                }
-                onToggle={(v) => toggleShader(def.id, v)}
-                onPropsChange={(props) => updateShaderProps(def.id, props)}
-              />
-            ))}
-          </section>
-
-          <section style={{ marginBottom: 16 }}>
-            <h3 style={{ margin: "0 0 8px", fontSize: 14 }}>Color</h3>
-            {colorShaders.map((def: ShaderDef) => (
-              <ShaderControl
-                key={def.id}
-                def={def}
-                enabled={shaders.some((s) => s.id === def.id)}
-                props={
-                  (shaders.find((s) => s.id === def.id)?.props as Record<
-                    string,
-                    unknown
-                  >) ?? (def.defaultProps as Record<string, unknown>)
-                }
-                onToggle={(v) => toggleShader(def.id, v)}
-                onPropsChange={(props) => updateShaderProps(def.id, props)}
-              />
-            ))}
-          </section>
-
-          <section style={{ marginBottom: 16 }}>
-            <h3 style={{ margin: "0 0 8px", fontSize: 14 }}>Interaction</h3>
-            {interactionShaders.map((def: ShaderDef) => (
-              <ShaderControl
-                key={def.id}
-                def={def}
-                enabled={shaders.some((s) => s.id === def.id)}
-                props={
-                  (shaders.find((s) => s.id === def.id)?.props as Record<
-                    string,
-                    unknown
-                  >) ?? (def.defaultProps as Record<string, unknown>)
-                }
-                onToggle={(v) => toggleShader(def.id, v)}
-                onPropsChange={(props) => updateShaderProps(def.id, props)}
-              />
-            ))}
+            <h3 style={{ margin: "0 0 8px", fontSize: 14 }}>Neon Blur</h3>
+            <div
+              style={{
+                padding: "0.75rem",
+                background: "#f0f0f0",
+                borderRadius: 8,
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+              }}
+            >
+              <div>
+                <label
+                  style={{ display: "block", fontSize: 12, marginBottom: 2 }}
+                >
+                  Intensity
+                </label>
+                <input
+                  type="range"
+                  min={0.5}
+                  max={3}
+                  step={0.1}
+                  value={intensity}
+                  onChange={(e) => setIntensity(Number(e.target.value))}
+                />
+                <span style={{ marginLeft: 8, fontSize: 12 }}>{intensity}</span>
+              </div>
+              <div>
+                <label
+                  style={{ display: "block", fontSize: 12, marginBottom: 2 }}
+                >
+                  Radius
+                </label>
+                <input
+                  type="range"
+                  min={0}
+                  max={20}
+                  step={0.5}
+                  value={radius}
+                  onChange={(e) => setRadius(Number(e.target.value))}
+                />
+                <span style={{ marginLeft: 8, fontSize: 12 }}>{radius}</span>
+              </div>
+              <div>
+                <label
+                  style={{ display: "block", fontSize: 12, marginBottom: 2 }}
+                >
+                  Aberration
+                </label>
+                <input
+                  type="range"
+                  min={0}
+                  max={10}
+                  step={0.5}
+                  value={aberration}
+                  onChange={(e) => setAberration(Number(e.target.value))}
+                />
+                <span style={{ marginLeft: 8, fontSize: 12 }}>
+                  {aberration}
+                </span>
+              </div>
+              <div>
+                <label
+                  style={{ display: "block", fontSize: 12, marginBottom: 2 }}
+                >
+                  Color primary
+                </label>
+                <input
+                  type="color"
+                  value={rgbToHex(
+                    colorPrimary[0],
+                    colorPrimary[1],
+                    colorPrimary[2],
+                  )}
+                  onChange={(e) =>
+                    setColorPrimary(hexToRgb(e.target.value))
+                  }
+                />
+              </div>
+              <div>
+                <label
+                  style={{ display: "block", fontSize: 12, marginBottom: 2 }}
+                >
+                  Color secondary
+                </label>
+                <input
+                  type="color"
+                  value={rgbToHex(
+                    colorSecondary[0],
+                    colorSecondary[1],
+                    colorSecondary[2],
+                  )}
+                  onChange={(e) =>
+                    setColorSecondary(hexToRgb(e.target.value))
+                  }
+                />
+              </div>
+            </div>
           </section>
         </aside>
 
@@ -403,10 +304,14 @@ ${code}`;
           }}
         >
           <div style={{ width: "100%", height: "100%", maxWidth: 800 }}>
-            <ShaderText
+            <NeonText
               text={text}
               font={font}
-              shaders={shaders}
+              intensity={intensity}
+              radius={radius}
+              aberration={aberration}
+              colorPrimary={colorPrimary}
+              colorSecondary={colorSecondary}
               style={{ width: "100%", height: "100%" }}
             />
           </div>
