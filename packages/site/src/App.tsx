@@ -153,16 +153,6 @@ export default function App() {
     weight: 600,
   });
   const [shaders, setShaders] = useState<ShaderConfig[]>([
-    // { id: "wave", type: "shape", props: { speed: 1, amplitude: 0.02 } },
-    // {
-    //   id: "gradient",
-    //   type: "color",
-    //   props: {
-    //     angle: 45,
-    //     color0: [0.1, 0.1, 0.4],
-    //     color1: [0.9, 0.4, 0.2],
-    //   },
-    // },
     {
       id: "neonBlur",
       type: "color",
@@ -174,7 +164,6 @@ export default function App() {
         colorSecondary: [0.6, 0.2, 0.9],
       },
     },
-    // { id: "cursorGlow", type: "interaction", props: { radius: 0.3 } },
   ]);
 
   const toggleShader = useCallback((id: string, enabled: boolean) => {

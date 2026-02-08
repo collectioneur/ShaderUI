@@ -19,19 +19,6 @@ export const paramsAccessor = tgpu["~unstable"].accessor(VisualizationParams);
 export const timeAccessor = tgpu["~unstable"].accessor(d.f32);
 
 // Shader composition uniforms
-export const WaveParams = d.struct({
-  speed: d.f32,
-  amplitude: d.f32,
-});
-export const GradientParams = d.struct({
-  angle: d.f32,
-  color0: d.vec3f,
-  color1: d.vec3f,
-});
-export const CursorParams = d.struct({
-  cursorUV: d.vec2f,
-  radius: d.f32,
-});
 export const NeonBlurParams = d.struct({
   intensity: d.f32,
   radius: d.f32,
@@ -40,13 +27,7 @@ export const NeonBlurParams = d.struct({
   colorSecondary: d.vec3f,
 });
 export const ShaderCompositionParams = d.struct({
-  waveEnabled: d.u32,
-  gradientEnabled: d.u32,
-  cursorEnabled: d.u32,
   neonBlurEnabled: d.u32,
-  wave: WaveParams,
-  gradient: GradientParams,
-  cursor: CursorParams,
   neonBlur: NeonBlurParams,
 });
 export const shaderCompositionAccessor =

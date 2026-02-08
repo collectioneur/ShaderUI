@@ -53,17 +53,7 @@ function createMaskFromText(
 }
 
 interface CompositionParamsValue {
-  waveEnabled: number;
-  gradientEnabled: number;
-  cursorEnabled: number;
   neonBlurEnabled: number;
-  wave: { speed: number; amplitude: number };
-  gradient: {
-    angle: number;
-    color0: ReturnType<typeof d.vec3f>;
-    color1: ReturnType<typeof d.vec3f>;
-  };
-  cursor: { cursorUV: ReturnType<typeof d.vec2f>; radius: number };
   neonBlur: {
     intensity: number;
     radius: number;
@@ -73,32 +63,9 @@ interface CompositionParamsValue {
   };
 }
 
-function buildCompositionParams(
-  shaders: ShaderConfig[],
-  cursorUV: [number, number],
-): CompositionParamsValue {
-  const wave = shaders.find((s) => s.id === "wave");
-  const gradient = shaders.find((s) => s.id === "gradient");
-  const cursorGlow = shaders.find((s) => s.id === "cursorGlow");
+function buildCompositionParams(shaders: ShaderConfig[]): CompositionParamsValue {
   const neonBlur = shaders.find((s) => s.id === "neonBlur");
-
-  const waveDef = getShaderDef("wave");
-  const gradientDef = getShaderDef("gradient");
-  const cursorDef = getShaderDef("cursorGlow");
   const neonBlurDef = getShaderDef("neonBlur");
-
-  const waveProps = (wave?.props ?? waveDef?.defaultProps) as {
-    speed?: number;
-    amplitude?: number;
-  };
-  const gradientProps = (gradient?.props ?? gradientDef?.defaultProps) as {
-    angle?: number;
-    color0?: [number, number, number];
-    color1?: [number, number, number];
-  };
-  const cursorProps = (cursorGlow?.props ?? cursorDef?.defaultProps) as {
-    radius?: number;
-  };
   const neonBlurProps = (neonBlur?.props ?? neonBlurDef?.defaultProps) as {
     intensity?: number;
     radius?: number;
@@ -108,31 +75,7 @@ function buildCompositionParams(
   };
 
   return {
-    waveEnabled: shaders.some((s) => s.id === "wave") ? 1 : 0,
-    gradientEnabled: shaders.some((s) => s.id === "gradient") ? 1 : 0,
-    cursorEnabled: shaders.some((s) => s.id === "cursorGlow") ? 1 : 0,
     neonBlurEnabled: shaders.some((s) => s.id === "neonBlur") ? 1 : 0,
-    wave: {
-      speed: waveProps?.speed ?? 1,
-      amplitude: waveProps?.amplitude ?? 0.02,
-    },
-    gradient: {
-      angle: gradientProps?.angle ?? 45,
-      color0: d.vec3f(
-        gradientProps?.color0?.[0] ?? 0.1,
-        gradientProps?.color0?.[1] ?? 0.1,
-        gradientProps?.color0?.[2] ?? 0.4,
-      ),
-      color1: d.vec3f(
-        gradientProps?.color1?.[0] ?? 0.9,
-        gradientProps?.color1?.[1] ?? 0.4,
-        gradientProps?.color1?.[2] ?? 0.2,
-      ),
-    },
-    cursor: {
-      cursorUV: d.vec2f(cursorUV[0], cursorUV[1]),
-      radius: cursorProps?.radius ?? 0.3,
-    },
     neonBlur: {
       intensity: neonBlurProps?.intensity ?? 1.5,
       radius: neonBlurProps?.radius ?? 8,
@@ -181,7 +124,6 @@ export function ShaderText({
     write: (v: CompositionParamsValue) => void;
   } | null>(null);
   const renderPipelineRef = useRef<unknown>(null);
-  const cursorRef = useRef<[number, number]>([0.5, 0.5]);
   const shadersRef = useRef<ShaderConfig[]>(shaders);
   shadersRef.current = shaders;
   const rafRef = useRef<number>(0);
@@ -244,7 +186,7 @@ export function ShaderText({
 
       const compositionUniform = root.createUniform(
         ShaderCompositionParams,
-        buildCompositionParams(shaders, cursorRef.current),
+        buildCompositionParams(shaders),
       );
       compositionUniformRef.current = compositionUniform;
 
@@ -265,9 +207,7 @@ export function ShaderText({
         const rootVal = rootRef.current;
         if (!rootVal) return;
         timeUniform.write(performance.now() / 1000);
-        compositionUniform.write(
-          buildCompositionParams(shadersRef.current, cursorRef.current),
-        );
+        compositionUniform.write(buildCompositionParams(shadersRef.current));
         const colorAttachment = {
           view: ctx.getCurrentTexture().createView(),
           loadOp: "clear" as const,
@@ -305,22 +245,8 @@ export function ShaderText({
   }, [runPipeline, text, font]);
 
   useEffect(() => {
-    compositionUniformRef.current?.write?.(
-      buildCompositionParams(shaders, cursorRef.current),
-    );
+    compositionUniformRef.current?.write?.(buildCompositionParams(shaders));
   }, [shaders]);
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const x = (e.clientX - rect.left) / rect.width;
-      const y = (e.clientY - rect.top) / rect.height;
-      cursorRef.current = [x, y];
-    },
-    [],
-  );
 
   return (
     <div
@@ -335,11 +261,7 @@ export function ShaderText({
       }}
       className={className}
     >
-      <canvas
-        ref={canvasRef}
-        onMouseMove={handleMouseMove}
-        style={{ display: "block" }}
-      />
+      <canvas ref={canvasRef} style={{ display: "block" }} />
     </div>
   );
 }
