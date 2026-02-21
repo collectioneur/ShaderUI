@@ -170,13 +170,16 @@ export const ShaderCanvas = React.memo(function ShaderCanvas({
       let builder: unknown = root["~unstable"];
       for (let i = 0; i < bindings.length; i++) {
         const b = bindings[i];
-        const uniform = (root.createUniform(
-          b.struct as Parameters<typeof root.createUniform>[0],
-          b.getValue() as Parameters<typeof root.createUniform>[1],
-        ) as { write: (v: unknown) => void; $name: (n: string) => unknown })
-          .$name(`u_${i}`) as { write: (v: unknown) => void };
+        const uniform = (
+          root.createUniform(
+            b.struct as Parameters<typeof root.createUniform>[0],
+            b.getValue() as Parameters<typeof root.createUniform>[1],
+          ) as { write: (v: unknown) => void; $name: (n: string) => unknown }
+        ).$name(`u_${i}`) as { write: (v: unknown) => void };
         uniforms.push({ write: uniform.write.bind(uniform) });
-        builder = (builder as { with: (accessor: unknown, resource: unknown) => unknown }).with(b.accessor, uniform);
+        builder = (
+          builder as { with: (accessor: unknown, resource: unknown) => unknown }
+        ).with(b.accessor, uniform);
       }
       uniformsRef.current = uniforms;
 
@@ -184,7 +187,12 @@ export const ShaderCanvas = React.memo(function ShaderCanvas({
       if (cancelled) return;
 
       const pipelineBuilder = builder as {
-        withVertex: (v: unknown) => { withFragment: (f: unknown, opts: { format: GPUTextureFormat }) => { createPipeline: () => unknown } };
+        withVertex: (v: unknown) => {
+          withFragment: (
+            f: unknown,
+            opts: { format: GPUTextureFormat },
+          ) => { createPipeline: () => unknown };
+        };
       };
 
       root.device.pushErrorScope("validation");
@@ -194,7 +202,10 @@ export const ShaderCanvas = React.memo(function ShaderCanvas({
         .createPipeline();
       const gpuError = await root.device.popErrorScope();
       if (gpuError) {
-        console.error("[ShaderCanvas] Pipeline creation error:", gpuError.message);
+        console.error(
+          "[ShaderCanvas] Pipeline creation error:",
+          gpuError.message,
+        );
       }
       renderPipelineRef.current = renderPipeline;
 
@@ -215,7 +226,9 @@ export const ShaderCanvas = React.memo(function ShaderCanvas({
           storeOp: "store" as const,
         };
         const rp = renderPipelineRef.current as {
-          with: (a: unknown) => { withColorAttachment: (c: unknown) => { draw: (n: number) => void } };
+          with: (a: unknown) => {
+            withColorAttachment: (c: unknown) => { draw: (n: number) => void };
+          };
         };
         const rp1 = rp.with(sdfPipelineRef.current.renderBindGroup);
         rp1.withColorAttachment(colorAttachment).draw(3);
@@ -246,6 +259,7 @@ export const ShaderCanvas = React.memo(function ShaderCanvas({
       ref={containerRef}
       style={{
         display: "inline-block",
+        backgroundColor: "transparent",
         ...style,
         ...(containerSize && {
           width: containerSize.width,
@@ -254,7 +268,10 @@ export const ShaderCanvas = React.memo(function ShaderCanvas({
       }}
       className={className}
     >
-      <canvas ref={canvasRef} style={{ display: "block" }} />
+      <canvas
+        ref={canvasRef}
+        style={{ display: "block", backgroundColor: "transparent" }}
+      />
     </div>
   );
 });

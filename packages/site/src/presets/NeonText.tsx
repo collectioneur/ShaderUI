@@ -1,7 +1,8 @@
-import React, { useRef, useMemo } from "react";
+import React, { useRef, useMemo, useCallback, useEffect } from "react";
 import tgpu from "typegpu";
 import * as d from "typegpu/data";
 import * as std from "typegpu/std";
+import { perlin2d } from "@typegpu/noise";
 import {
   ShaderCanvas,
   distSampleLayout,
@@ -9,138 +10,155 @@ import {
   type UniformBinding,
 } from "@shaderui/lib";
 
-const intensityAccessor = tgpu["~unstable"].accessor(d.f32);
-const radiusAccessor = tgpu["~unstable"].accessor(d.f32);
-const aberrationAccessor = tgpu["~unstable"].accessor(d.f32);
-const colorPrimaryAccessor = tgpu["~unstable"].accessor(d.vec3f);
-const colorSecondaryAccessor = tgpu["~unstable"].accessor(d.vec3f);
+const waterLevelAccessor = tgpu["~unstable"].accessor(d.f32);
+const liquefactionAccessor = tgpu["~unstable"].accessor(d.f32);
+const hoverSpreadAccessor = tgpu["~unstable"].accessor(d.f32);
+const mouseUVAccessor = tgpu["~unstable"].accessor(d.vec2f);
+const timeAccessor = tgpu["~unstable"].accessor(d.f32);
 
-const neonFragment = tgpu["~unstable"].fragmentFn({
+const NOISE_SCALE = 12;
+const HOVER_RADIUS = 0.5;
+
+const waterFragment = tgpu["~unstable"].fragmentFn({
   in: { uv: d.vec2f },
   out: d.vec4f,
 })(({ uv }) => {
   "use gpu";
-  const intensity = intensityAccessor.$;
-  const radius = radiusAccessor.$;
-  const aberration = aberrationAccessor.$;
-  const colorPrimary = colorPrimaryAccessor.$;
-  const colorSecondary = colorSecondaryAccessor.$;
+  const waterLevel = waterLevelAccessor.$;
+  const liquefaction = liquefactionAccessor.$;
+  const hoverSpread = hoverSpreadAccessor.$;
+  const mouseUV = mouseUVAccessor.$;
+  const time = timeAccessor.$;
 
-  const aberrationUV = aberration * d.f32(0.02);
-
-  const distR = std.textureSample(
-    distSampleLayout.$.distTexture,
-    distSampleLayout.$.sampler,
-    d.vec2f(uv.x + aberrationUV, uv.y),
-  ).x;
-  const distG = std.textureSample(
+  const distAbove = std.textureSample(
     distSampleLayout.$.distTexture,
     distSampleLayout.$.sampler,
     uv,
   ).x;
-  const distB = std.textureSample(
+
+  const reflectedV = d.f32(2.0) * waterLevel - uv.y;
+  const noisePos = uv.mul(d.f32(NOISE_SCALE)).mul(d.vec2f(2.0, 10.0));
+  const timeOffset = d.vec2f(time, 0.0);
+  // const timeOffset = d.vec2f(0.0, time * d.f32(1.5));
+  const n1 = perlin2d.sample(noisePos.add(timeOffset));
+  const n2 = perlin2d.sample(
+    d.vec2f(noisePos.x + d.f32(50.0), noisePos.y + d.f32(30.0)).add(timeOffset),
+  );
+  let dx = n1 * liquefaction;
+  let dy = n2 * liquefaction;
+
+  const mouseInside = 1.0;
+  if (mouseInside) {
+    const dist = std.distance(uv, mouseUV);
+    const falloff =
+      d.f32(1.0) - std.smoothstep(d.f32(HOVER_RADIUS), d.f32(0.0), dist);
+    const hoverAmount = hoverSpread * falloff;
+    dx = dx + n1 * hoverAmount * 10.0;
+    dy = dy + n2 * hoverAmount * 10.0;
+  }
+
+  const distortedUV = d.vec2f(uv.x + dx, reflectedV + dy);
+  const distBelow = std.textureSample(
     distSampleLayout.$.distTexture,
     distSampleLayout.$.sampler,
-    d.vec2f(uv.x - aberrationUV, uv.y),
+    distortedUV,
   ).x;
 
-  const coreMask = std.smoothstep(d.f32(1.0), d.f32(0.0), distG * 0.02);
-  const glowRadius = std.max(radius * d.f32(0.1), d.f32(0.001));
+  // SDF is negative inside glyphs and positive outside.
+  // Invert smoothstep so text is opaque and background is transparent.
+  const alphaAbove =
+    d.f32(1.0) -
+    std.smoothstep(d.f32(0.0), d.f32(0.02), distAbove * d.f32(0.01));
+  const alphaBelow =
+    d.f32(1.0) -
+    std.smoothstep(d.f32(0.0), d.f32(0.02), distBelow * d.f32(0.01));
 
-  const glowR =
-    (d.f32(1.0) - std.smoothstep(d.f32(0.0), glowRadius, distR * 0.001)) *
-    intensity;
-  const glowG =
-    (d.f32(1.0) - std.smoothstep(d.f32(0.0), glowRadius, distG * 0.001)) *
-    intensity;
-  const glowB =
-    (d.f32(1.0) - std.smoothstep(d.f32(0.0), glowRadius, distB * 0.001)) *
-    intensity;
+  const aboveWater = uv.y < waterLevel;
+  const alpha = std.select(alphaBelow, alphaAbove, aboveWater);
 
-  const colorMixFactor = std.smoothstep(glowRadius, d.f32(0.0), distG * 0.001);
-  const neonColor = std.mix(colorSecondary, colorPrimary, colorMixFactor);
-
-  const finalGlow = d.vec3f(
-    glowR * neonColor.x,
-    glowG * neonColor.y,
-    glowB * neonColor.z,
-  );
-  const resultColor = std.mix(finalGlow, d.vec3f(1.0, 1.0, 1.0), coreMask);
-
-  let alpha = std.max(glowR, std.max(glowG, glowB));
-  alpha = std.pow(alpha, d.f32(0.8));
-
-  return d.vec4f(resultColor, alpha);
+  return d.vec4f(1.0, 1.0, 1.0, alpha);
 });
 
 export interface NeonTextProps {
   text: string;
   font: FontConfig;
-  intensity?: number;
-  radius?: number;
-  aberration?: number;
-  colorPrimary?: [number, number, number];
-  colorSecondary?: [number, number, number];
+  waterLevel?: number;
+  liquefaction?: number;
+  hoverSpread?: number;
   style?: React.CSSProperties;
   className?: string;
 }
 
-const DEFAULT_COLOR_PRIMARY: [number, number, number] = [0.2, 0.8, 1.0];
-const DEFAULT_COLOR_SECONDARY: [number, number, number] = [0.6, 0.2, 0.9];
-
 export function NeonText({
   text,
   font,
-  intensity = 1.5,
-  radius = 8,
-  aberration = 2,
-  colorPrimary = DEFAULT_COLOR_PRIMARY,
-  colorSecondary = DEFAULT_COLOR_SECONDARY,
+  waterLevel = 0.5,
+  liquefaction = 0.03,
+  hoverSpread = 0.02,
   style,
   className,
 }: NeonTextProps) {
-  const intensityRef = useRef(intensity);
-  intensityRef.current = intensity;
-  const radiusRef = useRef(radius);
-  radiusRef.current = radius;
-  const aberrationRef = useRef(aberration);
-  aberrationRef.current = aberration;
-  const colorPrimaryRef = useRef(colorPrimary);
-  colorPrimaryRef.current = colorPrimary;
-  const colorSecondaryRef = useRef(colorSecondary);
-  colorSecondaryRef.current = colorSecondary;
+  const waterLevelRef = useRef(waterLevel);
+  waterLevelRef.current = waterLevel;
+  const liquefactionRef = useRef(liquefaction);
+  liquefactionRef.current = liquefaction;
+  const hoverSpreadRef = useRef(hoverSpread);
+  hoverSpreadRef.current = hoverSpread;
+
+  const mouseUVRef = useRef<[number, number]>([-2, -2]);
+  const timeRef = useRef(0);
+
+  useEffect(() => {
+    let raf = 0;
+    const tick = () => {
+      timeRef.current = performance.now() / 1000;
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    mouseUVRef.current = [x, y];
+  }, []);
+  const handleMouseLeave = useCallback(() => {
+    mouseUVRef.current = [-2, -2];
+  }, []);
 
   const uniformBindings = useRef<UniformBinding[]>([
     {
-      accessor: intensityAccessor,
+      accessor: waterLevelAccessor,
       struct: d.f32,
-      getValue: () => intensityRef.current,
+      getValue: () => waterLevelRef.current,
     },
     {
-      accessor: radiusAccessor,
+      accessor: liquefactionAccessor,
       struct: d.f32,
-      getValue: () => radiusRef.current,
+      getValue: () => liquefactionRef.current,
     },
     {
-      accessor: aberrationAccessor,
+      accessor: hoverSpreadAccessor,
       struct: d.f32,
-      getValue: () => aberrationRef.current,
+      getValue: () => hoverSpreadRef.current,
     },
     {
-      accessor: colorPrimaryAccessor,
-      struct: d.vec3f,
+      accessor: mouseUVAccessor,
+      struct: d.vec2f,
       getValue: () => {
-        const c = colorPrimaryRef.current;
-        return d.vec3f(c[0], c[1], c[2]);
+        const [x, y] = mouseUVRef.current;
+        return d.vec2f(x, y);
       },
     },
     {
-      accessor: colorSecondaryAccessor,
-      struct: d.vec3f,
-      getValue: () => {
-        const c = colorSecondaryRef.current;
-        return d.vec3f(c[0], c[1], c[2]);
-      },
+      accessor: timeAccessor,
+      struct: d.f32,
+      getValue: () => timeRef.current,
     },
   ]);
 
@@ -150,12 +168,19 @@ export function NeonText({
   );
 
   return (
-    <ShaderCanvas
-      source={source}
-      fragment={neonFragment}
-      uniformBindingsRef={uniformBindings}
-      style={style}
-      className={className}
-    />
+    <div
+      ref={containerRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{ display: "inline-block" }}
+    >
+      <ShaderCanvas
+        source={source}
+        fragment={waterFragment}
+        uniformBindingsRef={uniformBindings}
+        style={style}
+        className={className}
+      />
+    </div>
   );
 }
