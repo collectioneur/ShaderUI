@@ -33,7 +33,7 @@ export function Layout() {
           }}
         >
           <img
-            src={`${import.meta.env.BASE_URL}shaderui-logo.png`}
+            src={`${import.meta.env.BASE_URL}/shaderui-logo.png`}
             alt="ShaderUI"
             style={{
               height: 36,
