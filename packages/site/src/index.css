@@ -126,3 +126,25 @@ select {
     border-color 0.2s ease-in-out,
     color 0.2s ease-in-out;
 }
+
+/* Examples page: mobile — canvas on top (limited height), panel below */
+@media (max-width: 768px) {
+  .examples-page {
+    flex-direction: column !important;
+  }
+
+  .examples-canvas-wrap {
+    min-height: 0 !important;
+    max-height: 50vh;
+    max-width: 100vw !important;
+    flex: 0 0 auto !important;
+  }
+
+  .examples-panel {
+    width: 100% !important;
+    max-width: none !important;
+    border-left: none !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+    flex: 1 1 auto !important;
+  }
+}

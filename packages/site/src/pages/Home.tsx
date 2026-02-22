@@ -1,6 +1,23 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Waterfall } from "../presets/Waterfall";
 import { type FontConfig } from "shaderui";
+
+const MOBILE_BREAKPOINT = 768;
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(
+    () =>
+      typeof window !== "undefined" && window.innerWidth < MOBILE_BREAKPOINT,
+  );
+  useEffect(() => {
+    const m = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
+    const onChange = () => setIsMobile(m.matches);
+    m.addEventListener("change", onChange);
+    onChange();
+    return () => m.removeEventListener("change", onChange);
+  }, []);
+  return isMobile;
+}
 
 const sectionStyle: React.CSSProperties = {
   maxWidth: 720,
@@ -58,6 +75,11 @@ const footerStyle: React.CSSProperties = {
 };
 
 export function Home() {
+  const isMobile = useIsMobile();
+  const titleFontSize = isMobile ? 48 : 120;
+  const titlePadding = isMobile ? 300 : 1000;
+  const titlePaddingSide = isMobile ? 50 : 400;
+
   return (
     <>
       <section style={{ ...sectionStyle, paddingTop: 256 }}>
@@ -68,7 +90,7 @@ export function Home() {
             position: "absolute",
             left: 0,
             right: 0,
-            top: -900,
+            top: -titlePadding + 150,
           }}
         >
           <Waterfall
@@ -76,15 +98,15 @@ export function Home() {
             font={
               {
                 family: "Courier New",
-                size: 120,
+                size: titleFontSize,
                 weight: 200,
               } as FontConfig
             }
             padding={{
-              paddingTop: 1000,
-              paddingRight: 400,
-              paddingBottom: 1000,
-              paddingLeft: 400,
+              paddingTop: titlePadding,
+              paddingRight: titlePaddingSide,
+              paddingBottom: titlePadding,
+              paddingLeft: titlePaddingSide,
             }}
           />
         </div>

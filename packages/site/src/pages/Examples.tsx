@@ -87,6 +87,7 @@ export function Examples() {
 
   return (
     <div
+      className="examples-page"
       style={{
         display: "flex",
         flex: 1,
@@ -95,9 +96,11 @@ export function Examples() {
       }}
     >
       <div
+        className="examples-canvas-wrap"
         style={{
           flex: 1,
           minWidth: 0,
+          minHeight: 0,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -121,7 +124,7 @@ export function Examples() {
         </div>
       </div>
 
-      <aside style={panelStyle}>
+      <aside className="examples-panel" style={panelStyle}>
         <div>
           <h3 style={sectionTitleStyle}>Examples</h3>
           {EXAMPLES.map((ex) => {
