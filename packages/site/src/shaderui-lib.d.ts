@@ -1,4 +1,4 @@
-declare module "@shaderui/lib" {
+declare module "shaderui" {
   import type { CSSProperties, RefObject } from "react";
 
   export interface FontConfig {
@@ -37,15 +37,17 @@ declare module "@shaderui/lib" {
 
   export function getSize(
     source: MaskSource,
-    padding?: Padding
+    padding?: Padding,
   ): { width: number; height: number };
   export function getMaskData(
     source: MaskSource,
     width: number,
     height: number,
-    padding?: Padding
+    padding?: Padding,
   ): Uint32Array;
-  export const ShaderCanvas: React.MemoExoticComponent<(props: ShaderCanvasProps) => JSX.Element>;
+  export const ShaderCanvas: React.MemoExoticComponent<
+    (props: ShaderCanvasProps) => JSX.Element
+  >;
 
   /** SDF texture + sampler bind group layout; fragment shaders use distSampleLayout.$.distTexture and .$.sampler */
   export const distSampleLayout: { $: { distTexture: any; sampler: any } };
@@ -53,7 +55,7 @@ declare module "@shaderui/lib" {
   export function createSDFPipeline(
     root: unknown,
     width: number,
-    height: number
+    height: number,
   ): unknown;
   export type SDFPipelineRoot = unknown;
 

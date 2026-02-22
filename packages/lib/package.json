@@ -1,5 +1,5 @@
 {
-  "name": "@shaderui/lib",
+  "name": "shaderui",
   "version": "0.0.1",
   "type": "module",
   "main": "./dist/index.js",
@@ -11,7 +11,9 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc && vite build",
     "dev": "vite build --watch"

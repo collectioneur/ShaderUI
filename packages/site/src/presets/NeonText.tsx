@@ -9,7 +9,7 @@ import {
   type FontConfig,
   type Padding,
   type UniformBinding,
-} from "@shaderui/lib";
+} from "shaderui";
 
 const waterLevelAccessor = tgpu["~unstable"].accessor(d.f32);
 const liquefactionAccessor = tgpu["~unstable"].accessor(d.f32);

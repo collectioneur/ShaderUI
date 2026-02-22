@@ -1,6 +1,6 @@
 import React from "react";
 import { Waterfall } from "../presets/Waterfall";
-import { type FontConfig } from "@shaderui/lib";
+import { type FontConfig } from "shaderui";
 
 const sectionStyle: React.CSSProperties = {
   maxWidth: 720,

@@ -9,7 +9,7 @@ import {
   type FontConfig,
   type Padding,
   type UniformBinding,
-} from "@shaderui/lib";
+} from "shaderui";
 
 const mouseUVAccessor = tgpu["~unstable"].accessor(d.vec2f);
 const timeAccessor = tgpu["~unstable"].accessor(d.f32);
