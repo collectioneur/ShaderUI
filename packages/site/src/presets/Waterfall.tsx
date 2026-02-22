@@ -20,10 +20,6 @@ const SPIN_AMOUNT = 3.0;
 const SPIN_EASE = 0.7;
 const CONTRAST = 28.0;
 const LIGHTING = 0.0;
-const NOISE_SCALE = 1.0;
-const HOVER_RADIUS = 100.0;
-const HOVER_BEND = 0.5;
-
 const COLOUR_1 = d.vec4f(0.871, 0.267, 0.231, 1.0);
 const COLOUR_2 = d.vec4f(0.4, 0.0, 0.706, 1.0);
 const COLOUR_3 = d.vec4f(0.086, 0.137, 0.145, 1.0);
@@ -34,7 +30,6 @@ const waterFragment = tgpu["~unstable"].fragmentFn({
 })(({ uv }) => {
   "use gpu";
   const time = timeAccessor.$;
-  const mouseUV = mouseUVAccessor.$;
 
   const mid = d.vec2f(0.5, 0.5);
   const uvCentered = uv.sub(mid);
@@ -94,7 +89,6 @@ const waterFragment = tgpu["~unstable"].fragmentFn({
   const light =
     d.f32(LIGHTING - 0.2) * std.max(c1p * d.f32(5.0) - d.f32(4.0), d.f32(0.0)) +
     d.f32(LIGHTING) * std.max(c2p * d.f32(5.0) - d.f32(4.0), d.f32(0.0));
-  const fluidStrength = std.abs(uvCentered.y);
 
   const phase = time * d.f32(0.5) + uv.x * d.f32(3.0) + uv.y * d.f32(2.0);
   const phaseNorm = std.fract(phase * d.f32(0.2));
@@ -161,15 +155,6 @@ const waterFragment = tgpu["~unstable"].fragmentFn({
 
   const flaredUV = d.vec2f(flaredX, uv.y);
   let flowUV = flaredUV.add(d.vec2f(xDisplacement, yDisplacement));
-
-  const distToCursor = std.abs(uv.sub(mouseUV));
-
-  const repelFalloff = std.smoothstep(d.f32(0.03), d.f32(0.0), distToCursor.x);
-
-  const toMouseDir = mouseUV.sub(uv);
-
-  const repelForce = d.f32(1.0);
-  const repelOffset = toMouseDir.mul(repelFalloff * repelForce);
 
   const distSDF = std.textureSample(
     distSampleLayout.$.distTexture,

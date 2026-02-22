@@ -50,7 +50,7 @@ export function Layout() {
               to={to}
               end={to === "/"}
               className={({ isActive }) => (isActive ? "nav-link-active" : "")}
-              style={({ isActive }) => ({
+              style={() => ({
                 padding: "8px 14px",
                 borderRadius: "var(--radius-sm)",
                 textDecoration: "none",

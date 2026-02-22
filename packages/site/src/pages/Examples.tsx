@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { type FontConfig } from "@shaderui/lib";
+import { type FontConfig } from "shaderui";
 import { NeonText } from "../presets/NeonText";
 
 const FONT_FAMILIES = [
@@ -158,10 +158,10 @@ export function Examples() {
           <label style={labelStyle}>Family</label>
           <select
             value={font.family}
-            onChange={(e) => setFont((f) => ({ ...f, family: e.target.value }))}
+            onChange={(e) => setFont((f: FontConfig) => ({ ...f, family: e.target.value }))}
             style={inputStyle}
           >
-            {FONT_FAMILIES.map((f) => (
+            {FONT_FAMILIES.map((f: string) => (
               <option key={f} value={f}>
                 {f}
               </option>
@@ -174,7 +174,7 @@ export function Examples() {
                 type="number"
                 value={font.size}
                 onChange={(e) =>
-                  setFont((f) => ({ ...f, size: Number(e.target.value) || 48 }))
+                  setFont((f: FontConfig) => ({ ...f, size: Number(e.target.value) || 48 }))
                 }
                 min={12}
                 max={400}
@@ -187,7 +187,7 @@ export function Examples() {
                 type="number"
                 value={font.weight}
                 onChange={(e) =>
-                  setFont((f) => ({ ...f, weight: Number(e.target.value) || 400 }))
+                  setFont((f: FontConfig) => ({ ...f, weight: Number(e.target.value) || 400 }))
                 }
                 min={100}
                 max={900}
