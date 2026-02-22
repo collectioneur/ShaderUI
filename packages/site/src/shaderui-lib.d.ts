@@ -22,15 +22,21 @@ declare module "@shaderui/lib" {
     source: MaskSource;
     fragment: unknown;
     uniformBindingsRef: RefObject<UniformBinding[]>;
+    /** Padding around the mask content (e.g. text). Default 150. */
+    padding?: number;
     style?: CSSProperties;
     className?: string;
   }
 
-  export function getSize(source: MaskSource): { width: number; height: number };
+  export function getSize(
+    source: MaskSource,
+    padding?: number
+  ): { width: number; height: number };
   export function getMaskData(
     source: MaskSource,
     width: number,
-    height: number
+    height: number,
+    padding?: number
   ): Uint32Array;
   export const ShaderCanvas: React.MemoExoticComponent<(props: ShaderCanvasProps) => JSX.Element>;
 

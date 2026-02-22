@@ -6,18 +6,20 @@ const nav = [
   { to: "/documentation", label: "Documentation" },
 ] as const;
 
+const HEADER_HEIGHT = 68;
+
 export function Layout() {
   return (
     <div
       style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}
     >
       <header
+        className="site-header"
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           padding: "16px 24px",
-          borderBottom: "1px solid rgba(255,255,255,0.08)",
           flexWrap: "wrap",
           gap: 12,
         }}
@@ -51,7 +53,6 @@ export function Layout() {
               style={({ isActive }) => ({
                 padding: "8px 14px",
                 borderRadius: "var(--radius-sm)",
-                color: isActive ? undefined : "var(--text-muted)",
                 textDecoration: "none",
                 fontWeight: 500,
                 textTransform: "capitalize",
@@ -63,7 +64,7 @@ export function Layout() {
           ))}
         </nav>
       </header>
-      <main style={{ flex: 1 }}>
+      <main style={{ flex: 1, paddingTop: HEADER_HEIGHT }}>
         <Outlet />
       </main>
     </div>

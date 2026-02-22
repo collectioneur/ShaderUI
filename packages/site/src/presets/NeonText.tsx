@@ -82,6 +82,7 @@ const waterFragment = tgpu["~unstable"].fragmentFn({
 export interface NeonTextProps {
   text: string;
   font: FontConfig;
+  padding?: number;
   waterLevel?: number;
   liquefaction?: number;
   hoverSpread?: number;
@@ -92,6 +93,7 @@ export interface NeonTextProps {
 export function NeonText({
   text,
   font,
+  padding = 150,
   waterLevel = 0.5,
   liquefaction = 0.03,
   hoverSpread = 0.02,
@@ -178,6 +180,7 @@ export function NeonText({
         source={source}
         fragment={waterFragment}
         uniformBindingsRef={uniformBindings}
+        padding={padding}
         style={style}
         className={className}
       />

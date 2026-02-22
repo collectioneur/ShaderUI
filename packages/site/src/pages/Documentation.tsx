@@ -11,6 +11,7 @@ const h1Style: React.CSSProperties = {
   fontSize: "2.25rem",
   fontWeight: 700,
   margin: "0 0 12px",
+  color: "var(--text)",
 };
 
 const h2Style: React.CSSProperties = {
@@ -18,6 +19,7 @@ const h2Style: React.CSSProperties = {
   fontSize: "1.35rem",
   fontWeight: 600,
   margin: "32px 0 12px",
+  color: "var(--text)",
 };
 
 const pStyle: React.CSSProperties = {
@@ -30,35 +32,35 @@ export function Documentation() {
   return (
     <>
       <section style={sectionStyle}>
-        <h1 className="text-gradient" style={h1Style}>Documentation</h1>
+        <h1 style={h1Style}>Documentation</h1>
         <p style={pStyle}>
           How to use ShaderUI in your project: setup, components, uniforms, and customization.
         </p>
       </section>
 
       <section style={sectionStyle}>
-        <h2 className="text-gradient" style={h2Style}>Connecting components</h2>
+        <h2 style={h2Style}>Connecting components</h2>
         <p style={pStyle}>
           Placeholder: step-by-step guide to installing the library and rendering your first ShaderCanvas component.
         </p>
       </section>
 
       <section style={sectionStyle}>
-        <h2 className="text-gradient" style={h2Style}>Creating and using uniforms</h2>
+        <h2 style={h2Style}>Creating and using uniforms</h2>
         <p style={pStyle}>
           Placeholder: how to define uniform bindings, pass values from React state, and use them in fragment shaders.
         </p>
       </section>
 
       <section style={sectionStyle}>
-        <h2 className="text-gradient" style={h2Style}>Customizing existing examples</h2>
+        <h2 style={h2Style}>Customizing existing examples</h2>
         <p style={pStyle}>
           Placeholder: how to fork a preset (e.g. NeonText), change parameters, and adapt the shader to your needs.
         </p>
       </section>
 
       <section style={sectionStyle}>
-        <h2 className="text-gradient" style={h2Style}>Integrating into your project</h2>
+        <h2 style={h2Style}>Integrating into your project</h2>
         <p style={pStyle}>
           Placeholder: build setup (Vite, bundler config), TypeGPU integration, and best practices for production.
         </p>

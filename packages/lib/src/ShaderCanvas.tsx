@@ -4,8 +4,6 @@ import { fullScreenTriangle } from "typegpu/common";
 import { createSDFPipeline } from "./sdfPipeline.ts";
 import type { FontConfig, MaskSource } from "./types.ts";
 
-const PADDING = 150;
-
 function measureTextSize(
   text: string,
   font: FontConfig,
@@ -25,6 +23,7 @@ function createMaskFromText(
   height: number,
   text: string,
   font: FontConfig,
+  padding: number,
 ): Uint32Array {
   const textCanvas = document.createElement("canvas");
   textCanvas.width = width;
@@ -34,7 +33,7 @@ function createMaskFromText(
   textCtx.scale(dpr, dpr);
   const fontStr = `${font.weight ?? 600} ${font.size}px ${font.family}, sans-serif`;
   textCtx.font = fontStr;
-  textCtx.fillText(text, PADDING, PADDING + font.size);
+  textCtx.fillText(text, padding, padding + font.size);
   const imageData = textCtx.getImageData(0, 0, width, height);
   const maskData = new Uint32Array(width * height);
   for (let i = 0; i < width * height; i++) {
@@ -43,13 +42,16 @@ function createMaskFromText(
   return maskData;
 }
 
-export function getSize(source: MaskSource): { width: number; height: number } {
+export function getSize(
+  source: MaskSource,
+  padding: number = 150,
+): { width: number; height: number } {
   switch (source.type) {
     case "text": {
       const { width, height } = measureTextSize(source.text, source.font);
       return {
-        width: width + 2 * PADDING,
-        height: height + 2 * PADDING,
+        width: width + 2 * padding,
+        height: height + 2 * padding,
       };
     }
     case "image":
@@ -64,10 +66,17 @@ export function getMaskData(
   source: MaskSource,
   width: number,
   height: number,
+  padding: number = 150,
 ): Uint32Array {
   switch (source.type) {
     case "text":
-      return createMaskFromText(width, height, source.text, source.font);
+      return createMaskFromText(
+        width,
+        height,
+        source.text,
+        source.font,
+        padding,
+      );
     case "image":
     case "svg":
       return new Uint32Array(width * height);
@@ -90,6 +99,8 @@ export interface ShaderCanvasProps {
   fragment: unknown;
   /** Ref to uniform bindings array. getValue() is called each frame on the GPU loop. */
   uniformBindingsRef: React.RefObject<UniformBinding[]>;
+  /** Padding around the mask content (e.g. text). Default 150. */
+  padding?: number;
   style?: React.CSSProperties;
   className?: string;
 }
@@ -98,6 +109,7 @@ export const ShaderCanvas = React.memo(function ShaderCanvas({
   source,
   fragment,
   uniformBindingsRef,
+  padding = 150,
   style = {},
   className,
 }: ShaderCanvasProps) {
@@ -126,10 +138,10 @@ export const ShaderCanvas = React.memo(function ShaderCanvas({
       }
       const pipeline = createSDFPipeline(root, width, height);
       sdfPipelineRef.current = pipeline;
-      const maskData = getMaskData(source, width, height);
+      const maskData = getMaskData(source, width, height, padding);
       pipeline.run(maskData);
     },
-    [source],
+    [source, padding],
   );
 
   useEffect(() => {
@@ -138,7 +150,7 @@ export const ShaderCanvas = React.memo(function ShaderCanvas({
     const canvas = canvasRef.current;
     if (!container || !canvas) return;
 
-    const { width: cssW, height: cssH } = getSize(source);
+    const { width: cssW, height: cssH } = getSize(source, padding);
     if (cssW <= 0 || cssH <= 0) return;
     setContainerSize({ width: cssW, height: cssH });
 
