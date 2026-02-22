@@ -7,6 +7,7 @@ import {
   ShaderCanvas,
   distSampleLayout,
   type FontConfig,
+  type Padding,
   type UniformBinding,
 } from "@shaderui/lib";
 
@@ -143,11 +144,11 @@ const waterFragment = tgpu["~unstable"].fragmentFn({
   const noiseValX = perlin2d.sample(uv.add(timeOffset));
   const distortionMaskX = std.smoothstep(
     d.f32(0.0),
-    d.f32(0.8),
+    d.f32(0.9),
     distFromCenter,
   );
 
-  const xDisplacement = noiseValX * distortionMaskX * d.f32(0.2);
+  const xDisplacement = noiseValX * distortionMaskX * d.f32(2.0);
 
   const flareMask = std.pow(distFromCenter, d.f32(2.0));
 
@@ -198,10 +199,17 @@ const waterFragment = tgpu["~unstable"].fragmentFn({
   return d.vec4f(premulR, premulG, premulB, alphaClamped * negativeFlareMask);
 });
 
+const DEFAULT_PADDING = {
+  paddingTop: 150,
+  paddingRight: 150,
+  paddingBottom: 150,
+  paddingLeft: 150,
+} satisfies Padding;
+
 export interface WaterfallProps {
   text: string;
   font: FontConfig;
-  padding?: number;
+  padding?: Partial<Padding>;
   style?: React.CSSProperties;
   className?: string;
 }
@@ -209,7 +217,7 @@ export interface WaterfallProps {
 export function Waterfall({
   text,
   font,
-  padding = 150,
+  padding = DEFAULT_PADDING,
   style,
   className,
 }: WaterfallProps) {

@@ -12,6 +12,13 @@ declare module "@shaderui/lib" {
     | { type: "image"; url: string }
     | { type: "svg"; node: SVGElement };
 
+  export interface Padding {
+    paddingTop: number;
+    paddingRight: number;
+    paddingBottom: number;
+    paddingLeft: number;
+  }
+
   export interface UniformBinding {
     accessor: unknown;
     struct: unknown;
@@ -22,21 +29,21 @@ declare module "@shaderui/lib" {
     source: MaskSource;
     fragment: unknown;
     uniformBindingsRef: RefObject<UniformBinding[]>;
-    /** Padding around the mask content (e.g. text). Default 150. */
-    padding?: number;
+    /** Padding per side: paddingTop, paddingRight, paddingBottom, paddingLeft. Partial = merged with defaults. */
+    padding?: Partial<Padding>;
     style?: CSSProperties;
     className?: string;
   }
 
   export function getSize(
     source: MaskSource,
-    padding?: number
+    padding?: Padding
   ): { width: number; height: number };
   export function getMaskData(
     source: MaskSource,
     width: number,
     height: number,
-    padding?: number
+    padding?: Padding
   ): Uint32Array;
   export const ShaderCanvas: React.MemoExoticComponent<(props: ShaderCanvasProps) => JSX.Element>;
 

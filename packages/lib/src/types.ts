@@ -18,6 +18,14 @@ export const SampleResult = d.struct({
 export const paramsAccessor = tgpu["~unstable"].accessor(VisualizationParams);
 export const timeAccessor = tgpu["~unstable"].accessor(d.f32);
 
+/** Padding per side for mask content (e.g. text). */
+export interface Padding {
+  paddingTop: number;
+  paddingRight: number;
+  paddingLeft: number;
+  paddingBottom: number;
+}
+
 /** Font descriptor for text mask source. */
 export interface FontConfig {
   family: string;

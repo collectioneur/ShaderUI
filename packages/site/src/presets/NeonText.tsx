@@ -7,6 +7,7 @@ import {
   ShaderCanvas,
   distSampleLayout,
   type FontConfig,
+  type Padding,
   type UniformBinding,
 } from "@shaderui/lib";
 
@@ -79,10 +80,17 @@ const waterFragment = tgpu["~unstable"].fragmentFn({
   return d.vec4f(1.0, 1.0, 1.0, alpha);
 });
 
+const DEFAULT_PADDING = {
+  paddingTop: 150,
+  paddingRight: 150,
+  paddingBottom: 150,
+  paddingLeft: 150,
+} satisfies Padding;
+
 export interface NeonTextProps {
   text: string;
   font: FontConfig;
-  padding?: number;
+  padding?: Partial<Padding>;
   waterLevel?: number;
   liquefaction?: number;
   hoverSpread?: number;
@@ -93,7 +101,7 @@ export interface NeonTextProps {
 export function NeonText({
   text,
   font,
-  padding = 150,
+  padding = DEFAULT_PADDING,
   waterLevel = 0.5,
   liquefaction = 0.03,
   hoverSpread = 0.02,

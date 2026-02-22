@@ -1,8 +1,15 @@
-import React, { useRef, useEffect, useCallback, useState } from "react";
+import React, { useRef, useEffect, useCallback, useMemo, useState } from "react";
 import tgpu from "typegpu";
 import { fullScreenTriangle } from "typegpu/common";
 import { createSDFPipeline } from "./sdfPipeline.ts";
-import type { FontConfig, MaskSource } from "./types.ts";
+import type { FontConfig, MaskSource, Padding } from "./types.ts";
+
+const DEFAULT_PADDING: Padding = {
+  paddingTop: 150,
+  paddingRight: 150,
+  paddingBottom: 150,
+  paddingLeft: 150,
+};
 
 function measureTextSize(
   text: string,
@@ -23,7 +30,7 @@ function createMaskFromText(
   height: number,
   text: string,
   font: FontConfig,
-  padding: number,
+  padding: Padding,
 ): Uint32Array {
   const textCanvas = document.createElement("canvas");
   textCanvas.width = width;
@@ -33,7 +40,11 @@ function createMaskFromText(
   textCtx.scale(dpr, dpr);
   const fontStr = `${font.weight ?? 600} ${font.size}px ${font.family}, sans-serif`;
   textCtx.font = fontStr;
-  textCtx.fillText(text, padding, padding + font.size);
+  textCtx.fillText(
+    text,
+    padding.paddingLeft,
+    padding.paddingTop + font.size,
+  );
   const imageData = textCtx.getImageData(0, 0, width, height);
   const maskData = new Uint32Array(width * height);
   for (let i = 0; i < width * height; i++) {
@@ -44,14 +55,16 @@ function createMaskFromText(
 
 export function getSize(
   source: MaskSource,
-  padding: number = 150,
+  padding: Padding = DEFAULT_PADDING,
 ): { width: number; height: number } {
   switch (source.type) {
     case "text": {
       const { width, height } = measureTextSize(source.text, source.font);
       return {
-        width: width + 2 * padding,
-        height: height + 2 * padding,
+        width:
+          width + padding.paddingLeft + padding.paddingRight,
+        height:
+          height + padding.paddingTop + padding.paddingBottom,
       };
     }
     case "image":
@@ -66,7 +79,7 @@ export function getMaskData(
   source: MaskSource,
   width: number,
   height: number,
-  padding: number = 150,
+  padding: Padding = DEFAULT_PADDING,
 ): Uint32Array {
   switch (source.type) {
     case "text":
@@ -99,8 +112,8 @@ export interface ShaderCanvasProps {
   fragment: unknown;
   /** Ref to uniform bindings array. getValue() is called each frame on the GPU loop. */
   uniformBindingsRef: React.RefObject<UniformBinding[]>;
-  /** Padding around the mask content (e.g. text). Default 150. */
-  padding?: number;
+  /** Padding around the mask content (e.g. text). Per-side: paddingTop, paddingRight, paddingLeft, paddingBottom. */
+  padding?: Partial<Padding>;
   style?: React.CSSProperties;
   className?: string;
 }
@@ -109,10 +122,24 @@ export const ShaderCanvas = React.memo(function ShaderCanvas({
   source,
   fragment,
   uniformBindingsRef,
-  padding = 150,
+  padding: paddingProp,
   style = {},
   className,
 }: ShaderCanvasProps) {
+  const padding: Padding = useMemo(
+    () => ({
+      paddingTop: paddingProp?.paddingTop ?? DEFAULT_PADDING.paddingTop,
+      paddingRight: paddingProp?.paddingRight ?? DEFAULT_PADDING.paddingRight,
+      paddingBottom: paddingProp?.paddingBottom ?? DEFAULT_PADDING.paddingBottom,
+      paddingLeft: paddingProp?.paddingLeft ?? DEFAULT_PADDING.paddingLeft,
+    }),
+    [
+      paddingProp?.paddingTop,
+      paddingProp?.paddingRight,
+      paddingProp?.paddingBottom,
+      paddingProp?.paddingLeft,
+    ],
+  );
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [containerSize, setContainerSize] = useState<{

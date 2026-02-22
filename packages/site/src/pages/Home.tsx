@@ -68,7 +68,7 @@ export function Home() {
             position: "absolute",
             left: 0,
             right: 0,
-            top: -350,
+            top: -900,
           }}
         >
           <Waterfall
@@ -80,7 +80,12 @@ export function Home() {
                 weight: 200,
               } as FontConfig
             }
-            padding={500}
+            padding={{
+              paddingTop: 1000,
+              paddingRight: 400,
+              paddingBottom: 1000,
+              paddingLeft: 400,
+            }}
           />
         </div>
         <p style={subheadingStyle}>
