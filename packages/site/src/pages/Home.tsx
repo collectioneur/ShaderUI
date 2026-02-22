@@ -75,7 +75,7 @@ export function Home() {
             text="shaderUI"
             font={
               {
-                family: "Playfair display",
+                family: "Courier New",
                 size: 120,
                 weight: 200,
               } as FontConfig

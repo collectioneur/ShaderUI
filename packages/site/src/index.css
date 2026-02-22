@@ -7,8 +7,8 @@
   --border: rgba(255, 255, 255, 0.12);
   --radius: 10px;
   --radius-sm: 6px;
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
-  --font-serif: "Playfair Display", "Lora", Georgia, serif;
+  --font-sans: "Courier New", system-ui, -apple-system, sans-serif;
+  --font-serif: "Courier New", "Lora", Georgia, serif;
 }
 
 *,
@@ -34,7 +34,9 @@ body {
 a {
   color: var(--text);
   text-decoration: none;
-  transition: color 0.2s ease-in-out, text-decoration-color 0.2s ease-in-out;
+  transition:
+    color 0.2s ease-in-out,
+    text-decoration-color 0.2s ease-in-out;
 }
 
 a:hover {
@@ -45,7 +47,12 @@ a:hover {
 button {
   font-family: inherit;
   cursor: pointer;
-  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, border-color 0.2s ease-in-out, opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+  transition:
+    background-color 0.2s ease-in-out,
+    color 0.2s ease-in-out,
+    border-color 0.2s ease-in-out,
+    opacity 0.2s ease-in-out,
+    transform 0.2s ease-in-out;
 }
 
 input,
@@ -72,7 +79,10 @@ select {
   color: var(--text-muted);
   text-decoration: none;
   border: 1px solid transparent;
-  transition: color 0.2s ease-in-out, border-color 0.2s ease-in-out, background-color 0.2s ease-in-out;
+  transition:
+    color 0.2s ease-in-out,
+    border-color 0.2s ease-in-out,
+    background-color 0.2s ease-in-out;
 }
 
 .site-header nav a:hover,
@@ -100,7 +110,9 @@ select {
 .example-active {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--border);
-  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+  transition:
+    background-color 0.2s ease-in-out,
+    border-color 0.2s ease-in-out;
 }
 
 .example-active .example-active-text {
@@ -109,5 +121,8 @@ select {
 
 /* Smooth transitions for interactive elements */
 [class*="example-"] {
-  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, color 0.2s ease-in-out;
+  transition:
+    background-color 0.2s ease-in-out,
+    border-color 0.2s ease-in-out,
+    color 0.2s ease-in-out;
 }

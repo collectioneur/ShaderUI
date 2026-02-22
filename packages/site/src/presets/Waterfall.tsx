@@ -15,9 +15,9 @@ const timeAccessor = tgpu["~unstable"].accessor(d.f32);
 
 const SPIN_ROTATION = -4.0;
 const SPIN_SPEED = 7.0;
-const SPIN_AMOUNT = 0.1;
+const SPIN_AMOUNT = 3.0;
 const SPIN_EASE = 0.7;
-const CONTRAST = 15.0;
+const CONTRAST = 28.0;
 const LIGHTING = 0.0;
 const NOISE_SCALE = 1.0;
 const HOVER_RADIUS = 100.0;
@@ -54,7 +54,7 @@ const waterFragment = tgpu["~unstable"].fragmentFn({
 
   let uv2 = d.vec2f(uvSpiral.x + uvSpiral.y, uvSpiral.x + uvSpiral.y);
 
-  for (let i = 0; i < 0; i++) {
+  for (let i = 0; i < 5; i++) {
     uv2 = uv2.add(std.sin(std.max(uvSpiral.x, uvSpiral.y))).add(uvSpiral);
     uvSpiral = uvSpiral.add(
       d.vec2f(
@@ -80,27 +80,32 @@ const waterFragment = tgpu["~unstable"].fragmentFn({
     d.f32(2.0),
     std.max(d.f32(0.0), std.length(uvSpiral) * d.f32(0.035) * contrastMod),
   );
+  const circleSharpness = d.f32(1.4);
   const c1p = std.max(
     d.f32(0.0),
-    d.f32(1.0) - contrastMod * std.abs(d.f32(1.0) - paintRes),
+    d.f32(1.0) - contrastMod * circleSharpness * std.abs(d.f32(1.0) - paintRes),
   );
-  const c2p = std.max(d.f32(0.0), d.f32(1.0) - contrastMod * std.abs(paintRes));
+  const c2p = std.max(
+    d.f32(0.0),
+    d.f32(1.0) - contrastMod * circleSharpness * std.abs(paintRes),
+  );
   const c3p = d.f32(1.0) - std.min(d.f32(1.0), c1p + c2p);
   const light =
     d.f32(LIGHTING - 0.2) * std.max(c1p * d.f32(5.0) - d.f32(4.0), d.f32(0.0)) +
     d.f32(LIGHTING) * std.max(c2p * d.f32(5.0) - d.f32(4.0), d.f32(0.0));
   const fluidStrength = std.abs(uvCentered.y);
 
-  const phase = time * d.f32(2.0) + uv.x * d.f32(3.0) + uv.y * d.f32(2.0);
+  const phase = time * d.f32(0.5) + uv.x * d.f32(3.0) + uv.y * d.f32(2.0);
   const phaseNorm = std.fract(phase * d.f32(0.2));
+  const tau = d.f32(6.283185307);
+  const tSmooth = (d.f32(1.0) - std.cos(phaseNorm * tau)) * d.f32(0.5);
+  const blend12 = std.smoothstep(d.f32(0.15), d.f32(0.45), tSmooth);
+  const blend23 = std.smoothstep(d.f32(0.45), d.f32(0.75), tSmooth);
+  const blend31 = std.smoothstep(d.f32(0.75), d.f32(1.0), tSmooth);
   const iridescent = std.mix(
-    std.mix(
-      COLOUR_1,
-      COLOUR_2,
-      std.smoothstep(d.f32(0.0), d.f32(0.5), phaseNorm),
-    ),
-    COLOUR_3,
-    std.smoothstep(d.f32(0.5), d.f32(1.0), phaseNorm),
+    std.mix(std.mix(COLOUR_1, COLOUR_2, blend12), COLOUR_3, blend23),
+    COLOUR_1,
+    blend31,
   );
   const highlight = d.f32(0.3) * (d.f32(1.0) + std.sin(phase));
   const contrastFactor = d.f32(0.3) / d.f32(CONTRAST);
