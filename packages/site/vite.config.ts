@@ -4,6 +4,7 @@ import typegpuPlugin from "unplugin-typegpu/vite";
 import path from "path";
 
 export default defineConfig({
+  base: "/ShaderUI/",
   resolve: {
     alias: {
       shaderui: path.resolve(__dirname, "../lib/dist/index.js"),
@@ -21,8 +22,7 @@ export default defineConfig({
   server: {
     watch: {
       ignored: (path) =>
-        path.includes("node_modules") &&
-        !path.includes("packages/lib"),
+        path.includes("node_modules") && !path.includes("packages/lib"),
     },
   },
 });
