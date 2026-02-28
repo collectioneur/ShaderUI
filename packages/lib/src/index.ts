@@ -1,5 +1,11 @@
 export { createSDFPipeline, type SDFPipelineRoot } from "./sdfPipeline.ts";
 export {
+  defineUniforms,
+  type UniformSpec,
+  type UniformControlMeta,
+  type DefineUniformsResult,
+} from "./defineUniforms.ts";
+export {
   ShaderCanvas,
   getSize,
   getMaskData,

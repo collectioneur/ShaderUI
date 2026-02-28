@@ -5,31 +5,76 @@ import * as std from "typegpu/std";
 import { perlin2d } from "@typegpu/noise";
 import {
   ShaderCanvas,
+  defineUniforms,
   distSampleLayout,
   type FontConfig,
   type Padding,
-  type UniformBinding,
 } from "shaderui";
-
-const waterLevelAccessor = tgpu["~unstable"].accessor(d.f32);
-const liquefactionAccessor = tgpu["~unstable"].accessor(d.f32);
-const hoverSpreadAccessor = tgpu["~unstable"].accessor(d.f32);
-const mouseUVAccessor = tgpu["~unstable"].accessor(d.vec2f);
-const timeAccessor = tgpu["~unstable"].accessor(d.f32);
+import { collectUniformControls, type PresetMeta } from "./types";
 
 const NOISE_SCALE = 12;
 const HOVER_RADIUS = 0.5;
+/** Scale for fwidth-based antialiasing; larger = softer edge (e.g. 2.0 ≈ 1–2 px) */
+const FWIDTH_AA_SCALE = 2.0;
+
+const U = defineUniforms({
+  waterLevel: {
+    schema: d.f32,
+    value: 0.5,
+    control: {
+      editable: true,
+      kind: "range",
+      label: "Water level",
+      min: 0,
+      max: 1,
+      step: 0.01,
+      group: "Water reflection",
+      decimals: 2,
+    },
+  },
+  liquefaction: {
+    schema: d.f32,
+    value: 0.03,
+    control: {
+      editable: true,
+      kind: "range",
+      label: "Liquefaction",
+      min: 0,
+      max: 0.15,
+      step: 0.005,
+      group: "Water reflection",
+      decimals: 3,
+    },
+  },
+  hoverSpread: {
+    schema: d.f32,
+    value: 0.02,
+    control: {
+      editable: true,
+      kind: "range",
+      label: "Hover spread",
+      min: 0,
+      max: 0.1,
+      step: 0.005,
+      group: "Water reflection",
+      decimals: 3,
+    },
+  },
+  mouseUV: { schema: d.vec2f, value: d.vec2f(-2, -2), control: { editable: false } },
+  time: { schema: d.f32, value: 0, control: { editable: false } },
+});
 
 const waterFragment = tgpu["~unstable"].fragmentFn({
   in: { uv: d.vec2f },
   out: d.vec4f,
 })(({ uv }) => {
   "use gpu";
-  const waterLevel = waterLevelAccessor.$;
-  const liquefaction = liquefactionAccessor.$;
-  const hoverSpread = hoverSpreadAccessor.$;
-  const mouseUV = mouseUVAccessor.$;
-  const time = timeAccessor.$;
+  const u = U.$;
+  const waterLevel = u.waterLevel;
+  const liquefaction = u.liquefaction;
+  const hoverSpread = u.hoverSpread;
+  const mouseUV = u.mouseUV;
+  const time = u.time;
 
   const distAbove = std.textureSample(
     distSampleLayout.$.distTexture,
@@ -51,11 +96,16 @@ const waterFragment = tgpu["~unstable"].fragmentFn({
   const mouseInside = 1.0;
   if (mouseInside) {
     const dist = std.distance(uv, mouseUV);
-    const falloff =
-      d.f32(1.0) - std.smoothstep(d.f32(HOVER_RADIUS), d.f32(0.0), dist);
-    const hoverAmount = hoverSpread * falloff;
-    dx = dx + n1 * hoverAmount * 10.0;
-    dy = dy + n2 * hoverAmount * 10.0;
+    // falloff: 1 at cursor center, fades to 0 at HOVER_RADIUS
+    const falloff = std.smoothstep(d.f32(HOVER_RADIUS), d.f32(0.0), dist);
+    // clearAmount: how much to reduce (clear) the distortion near the cursor
+    const clearAmount = std.clamp(
+      hoverSpread * falloff * d.f32(10.0),
+      d.f32(0.0),
+      d.f32(1.0),
+    );
+    dx = dx * (d.f32(1.0) - clearAmount);
+    dy = dy * (d.f32(1.0) - clearAmount);
   }
 
   const distortedUV = d.vec2f(uv.x + dx, reflectedV + dy);
@@ -65,19 +115,30 @@ const waterFragment = tgpu["~unstable"].fragmentFn({
     distortedUV,
   ).x;
 
+  // fwidth-based antialiasing: soften SDF edge by ~1-2 px using screen-space derivative
+  const fwidthDistAbove = std.fwidth(distAbove);
+  const fwidthDistBelow = std.fwidth(distBelow);
   // SDF is negative inside glyphs and positive outside.
   // Invert smoothstep so text is opaque and background is transparent.
   const alphaAbove =
     d.f32(1.0) -
-    std.smoothstep(d.f32(0.0), d.f32(0.02), distAbove * d.f32(0.01));
+    std.smoothstep(
+      d.f32(0.0),
+      fwidthDistAbove * d.f32(FWIDTH_AA_SCALE),
+      distAbove,
+    );
   const alphaBelow =
     d.f32(1.0) -
-    std.smoothstep(d.f32(0.0), d.f32(0.02), distBelow * d.f32(0.01));
+    std.smoothstep(
+      d.f32(0.0),
+      fwidthDistBelow * d.f32(FWIDTH_AA_SCALE),
+      distBelow,
+    );
 
   const aboveWater = uv.y < waterLevel;
   const alpha = std.select(alphaBelow, alphaAbove, aboveWater);
 
-  return d.vec4f(1.0, 1.0, 1.0, alpha);
+  return d.vec4f(1.0 * alpha, 1.0 * alpha, 1.0 * alpha, alpha);
 });
 
 const DEFAULT_PADDING = {
@@ -141,36 +202,18 @@ export function NeonText({
     mouseUVRef.current = [-2, -2];
   }, []);
 
-  const uniformBindings = useRef<UniformBinding[]>([
-    {
-      accessor: waterLevelAccessor,
-      struct: d.f32,
-      getValue: () => waterLevelRef.current,
-    },
-    {
-      accessor: liquefactionAccessor,
-      struct: d.f32,
-      getValue: () => liquefactionRef.current,
-    },
-    {
-      accessor: hoverSpreadAccessor,
-      struct: d.f32,
-      getValue: () => hoverSpreadRef.current,
-    },
-    {
-      accessor: mouseUVAccessor,
-      struct: d.vec2f,
-      getValue: () => {
+  const uniformBindings = useRef(
+    U.createBindings({
+      waterLevel: () => waterLevelRef.current,
+      liquefaction: () => liquefactionRef.current,
+      hoverSpread: () => hoverSpreadRef.current,
+      time: () => timeRef.current,
+      mouseUV: () => {
         const [x, y] = mouseUVRef.current;
         return d.vec2f(x, y);
       },
-    },
-    {
-      accessor: timeAccessor,
-      struct: d.f32,
-      getValue: () => timeRef.current,
-    },
-  ]);
+    }),
+  );
 
   const source = useMemo(
     () => ({ type: "text" as const, text, font }),
@@ -195,3 +238,23 @@ export function NeonText({
     </div>
   );
 }
+
+const DEFAULT_FONT: FontConfig = {
+  family: "Helvetica",
+  size: 120,
+  weight: 600,
+};
+
+export const presetMeta = {
+  id: "neon",
+  name: "Neon Text",
+  component: NeonText,
+  defaultProps: {
+    text: "Hello",
+    font: DEFAULT_FONT,
+    waterLevel: 0.5,
+    liquefaction: 0.03,
+    hoverSpread: 0.02,
+  },
+  uniformControls: collectUniformControls(U.specs),
+} satisfies PresetMeta<NeonTextProps>;

@@ -1,6 +1,8 @@
-import { useState, useCallback } from "react";
-import { type FontConfig } from "shaderui";
-import { NeonText } from "../presets/NeonText";
+import { useState, useCallback, useMemo } from "react";
+import type { CSSProperties, ComponentType } from "react";
+import type { FontConfig } from "shaderui";
+import { UniformControls } from "../components/UniformControls";
+import { presetRegistry } from "../presets/registry";
 
 const FONT_FAMILIES = [
   "Inter",
@@ -11,11 +13,7 @@ const FONT_FAMILIES = [
   "sans-serif",
 ];
 
-const EXAMPLES = [
-  { id: "neon", name: "Neon Text", text: "Hello", font: { family: "Helvetica", size: 120, weight: 600 } as FontConfig },
-] as const;
-
-const panelStyle: React.CSSProperties = {
+const panelStyle: CSSProperties = {
   width: 280,
   padding: 20,
   overflowY: "auto",
@@ -26,7 +24,7 @@ const panelStyle: React.CSSProperties = {
   gap: 24,
 };
 
-const labelStyle: React.CSSProperties = {
+const labelStyle: CSSProperties = {
   display: "block",
   fontWeight: 600,
   marginBottom: 8,
@@ -34,7 +32,7 @@ const labelStyle: React.CSSProperties = {
   color: "var(--text)",
 };
 
-const inputStyle: React.CSSProperties = {
+const inputStyle: CSSProperties = {
   width: "100%",
   padding: "10px 12px",
   borderRadius: "var(--radius-sm)",
@@ -44,7 +42,7 @@ const inputStyle: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-const sectionTitleStyle: React.CSSProperties = {
+const sectionTitleStyle: CSSProperties = {
   fontSize: "0.75rem",
   fontWeight: 600,
   textTransform: "uppercase" as const,
@@ -53,7 +51,7 @@ const sectionTitleStyle: React.CSSProperties = {
   margin: "0 0 12px",
 };
 
-const exampleItemStyle = (active: boolean): React.CSSProperties => ({
+const exampleItemStyle = (active: boolean): CSSProperties => ({
   padding: "12px 14px",
   borderRadius: "var(--radius-sm)",
   background: "transparent",
@@ -65,25 +63,76 @@ const exampleItemStyle = (active: boolean): React.CSSProperties => ({
 });
 
 export function Examples() {
-  const [text, setText] = useState("Hello");
-  const [font, setFont] = useState<FontConfig>({
-    family: "Helvetica",
-    size: 120,
-    weight: 600,
-  });
-  const [waterLevel, setWaterLevel] = useState(0.5);
-  const [liquefaction, setLiquefaction] = useState(0.03);
-  const [hoverSpread, setHoverSpread] = useState(0.02);
-  const [activeExampleId, setActiveExampleId] = useState<string>("neon");
+  const [activeExampleId, setActiveExampleId] = useState<string>(
+    presetRegistry[0]?.id ?? "",
+  );
+  const [presetPropsState, setPresetPropsState] = useState<
+    Record<string, Record<string, unknown>>
+  >(() =>
+    Object.fromEntries(
+      presetRegistry.map((preset) => [preset.id, { ...preset.defaultProps }]),
+    ),
+  );
+
+  const activePreset = useMemo(() => {
+    if (presetRegistry.length === 0) return null;
+    return (
+      presetRegistry.find((preset) => preset.id === activeExampleId) ?? presetRegistry[0]
+    );
+  }, [activeExampleId]);
+
+  const activeProps = useMemo<Record<string, unknown>>(() => {
+    if (!activePreset) return {};
+    return presetPropsState[activePreset.id] ?? activePreset.defaultProps;
+  }, [activePreset, presetPropsState]);
+
+  const font = useMemo<FontConfig>(() => {
+    const fallback = { family: "Helvetica", size: 120, weight: 600 };
+    const raw = activeProps.font;
+    if (!raw || typeof raw !== "object") return fallback;
+    const candidate = raw as Partial<FontConfig>;
+    return {
+      family: typeof candidate.family === "string" ? candidate.family : fallback.family,
+      size: typeof candidate.size === "number" ? candidate.size : fallback.size,
+      weight: typeof candidate.weight === "number" ? candidate.weight : fallback.weight,
+    };
+  }, [activeProps.font]);
+
+  const text = typeof activeProps.text === "string" ? activeProps.text : "Hello";
+
+  const updateActiveProp = useCallback(
+    (key: string, value: unknown) => {
+      if (!activePreset) return;
+      setPresetPropsState((prev) => ({
+        ...prev,
+        [activePreset.id]: {
+          ...(prev[activePreset.id] ?? activePreset.defaultProps),
+          [key]: value,
+        },
+      }));
+    },
+    [activePreset],
+  );
 
   const selectExample = useCallback((id: string) => {
-    const ex = EXAMPLES.find((e) => e.id === id);
-    if (ex) {
-      setActiveExampleId(id);
-      setText(ex.text);
-      setFont(ex.font);
-    }
+    const preset = presetRegistry.find((entry) => entry.id === id);
+    if (!preset) return;
+    setActiveExampleId(id);
+    setPresetPropsState((prev) => {
+      if (prev[id]) return prev;
+      return { ...prev, [id]: { ...preset.defaultProps } };
+    });
   }, []);
+
+  if (!activePreset) {
+    return (
+      <div style={{ padding: 24, color: "var(--text-muted)" }}>
+        No presets found in <code>packages/site/src/presets</code>.
+      </div>
+    );
+  }
+
+  const ActivePreset = activePreset.component as ComponentType<Record<string, unknown>>;
 
   return (
     <div
@@ -109,12 +158,10 @@ export function Examples() {
         }}
       >
         <div style={{ width: "100%", height: "100%", maxWidth: 800 }}>
-          <NeonText
+          <ActivePreset
+            {...activeProps}
             text={text}
             font={font}
-            waterLevel={waterLevel}
-            liquefaction={liquefaction}
-            hoverSpread={hoverSpread}
             style={{
               width: "100%",
               height: "100%",
@@ -127,7 +174,7 @@ export function Examples() {
       <aside className="examples-panel" style={panelStyle}>
         <div>
           <h3 style={sectionTitleStyle}>Examples</h3>
-          {EXAMPLES.map((ex) => {
+          {presetRegistry.map((ex) => {
             const active = activeExampleId === ex.id;
             return (
               <button
@@ -151,7 +198,7 @@ export function Examples() {
           <input
             type="text"
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => updateActiveProp("text", e.target.value)}
             style={inputStyle}
           />
         </div>
@@ -161,7 +208,7 @@ export function Examples() {
           <label style={labelStyle}>Family</label>
           <select
             value={font.family}
-            onChange={(e) => setFont((f: FontConfig) => ({ ...f, family: e.target.value }))}
+            onChange={(e) => updateActiveProp("font", { ...font, family: e.target.value })}
             style={inputStyle}
           >
             {FONT_FAMILIES.map((f: string) => (
@@ -177,7 +224,10 @@ export function Examples() {
                 type="number"
                 value={font.size}
                 onChange={(e) =>
-                  setFont((f: FontConfig) => ({ ...f, size: Number(e.target.value) || 48 }))
+                  updateActiveProp("font", {
+                    ...font,
+                    size: Number(e.target.value) || 48,
+                  })
                 }
                 min={12}
                 max={400}
@@ -190,7 +240,10 @@ export function Examples() {
                 type="number"
                 value={font.weight}
                 onChange={(e) =>
-                  setFont((f: FontConfig) => ({ ...f, weight: Number(e.target.value) || 400 }))
+                  updateActiveProp("font", {
+                    ...font,
+                    weight: Number(e.target.value) || 400,
+                  })
                 }
                 min={100}
                 max={900}
@@ -202,66 +255,12 @@ export function Examples() {
         </div>
 
         <div>
-          <h3 style={sectionTitleStyle}>Water reflection</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div>
-              <label style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: 4, display: "block" }}>
-                Water level
-              </label>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={waterLevel}
-                  onChange={(e) => setWaterLevel(Number(e.target.value))}
-                  style={{ flex: 1 }}
-                />
-                <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", minWidth: 36 }}>
-                  {waterLevel.toFixed(2)}
-                </span>
-              </div>
-            </div>
-            <div>
-              <label style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: 4, display: "block" }}>
-                Liquefaction
-              </label>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <input
-                  type="range"
-                  min={0}
-                  max={0.15}
-                  step={0.005}
-                  value={liquefaction}
-                  onChange={(e) => setLiquefaction(Number(e.target.value))}
-                  style={{ flex: 1 }}
-                />
-                <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", minWidth: 36 }}>
-                  {liquefaction.toFixed(3)}
-                </span>
-              </div>
-            </div>
-            <div>
-              <label style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: 4, display: "block" }}>
-                Hover spread
-              </label>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <input
-                  type="range"
-                  min={0}
-                  max={0.1}
-                  step={0.005}
-                  value={hoverSpread}
-                  onChange={(e) => setHoverSpread(Number(e.target.value))}
-                  style={{ flex: 1 }}
-                />
-                <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", minWidth: 36 }}>
-                  {hoverSpread.toFixed(3)}
-                </span>
-              </div>
-            </div>
-          </div>
+          <h3 style={sectionTitleStyle}>Uniforms</h3>
+          <UniformControls
+            controls={activePreset.uniformControls}
+            values={activeProps}
+            onValueChange={(uniformKey, value) => updateActiveProp(uniformKey, value)}
+          />
         </div>
       </aside>
     </div>

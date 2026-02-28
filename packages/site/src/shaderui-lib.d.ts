@@ -52,6 +52,60 @@ declare module "shaderui" {
   /** SDF texture + sampler bind group layout; fragment shaders use distSampleLayout.$.distTexture and .$.sampler */
   export const distSampleLayout: { $: { distTexture: any; sampler: any } };
 
+  /** Spec for a single uniform: GPU schema + default value used when no getter is provided. */
+  export interface UniformControlMeta {
+    editable?: boolean;
+    kind?: "range";
+    label?: string;
+    min?: number;
+    max?: number;
+    step?: number;
+    group?: string;
+    decimals?: number;
+  }
+
+  /** Spec for a single uniform: GPU schema + default value used when no getter is provided. */
+  export interface UniformSpec<S = unknown> {
+    schema: S;
+    value: unknown;
+    control?: UniformControlMeta;
+  }
+
+  export interface DefineUniformsResult<S extends Record<string, UniformSpec>> {
+    /** Struct accessor `.$` — use inside `"use gpu"` code to read fields. */
+    $: { [K in keyof S]: any };
+    /** Original specs passed to defineUniforms (read-only reference). */
+    readonly specs: Readonly<S>;
+    /** Returns a single-entry UniformBinding[] (one GPU buffer for all fields). */
+    createBindings(
+      getters?: Partial<{ [K in keyof S]: () => unknown }>,
+    ): UniformBinding[];
+  }
+
+  /**
+   * Converts a flat record of `{ key: { schema, value } }` into TypeGPU
+   * accessors (for the fragment shader) and a `createBindings()` helper
+   * (for the React component).
+   *
+   * Call at **module level** — accessors must exist before the fragment fn.
+   *
+   * @example
+   * const U = defineUniforms({
+   *   SPIRAL_SPEED: { schema: d.f32,   value: 7.0 },
+   *   COLOR_PRIMARY: { schema: d.vec4f, value: d.vec4f(0.87, 0.27, 0.23, 1) },
+   *   time:          { schema: d.f32,   value: 0 },
+   * });
+   *
+   * // In the shader:  const speed = U.SPIRAL_SPEED.$;
+   * // In the component:
+   * const uniformBindings = useRef(
+   *   U.createBindings({ time: () => timeRef.current }),
+   * );
+   */
+  export function defineUniforms<S extends Record<string, UniformSpec>>(
+    specs: S,
+  ): DefineUniformsResult<S>;
+
   export function createSDFPipeline(
     root: unknown,
     width: number,
