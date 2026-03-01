@@ -749,12 +749,6 @@ export function MorphingCrystal(props: MorphingCrystalProps) {
   );
 }
 
-const DEFAULT_FONT: FontConfig = {
-  family: "Helvetica",
-  size: 120,
-  weight: 600,
-};
-
 export const presetMeta = {
   id: "morphing-crystal",
   name: "Morphing Crystal",

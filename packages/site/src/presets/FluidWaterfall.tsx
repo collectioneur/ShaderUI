@@ -503,12 +503,6 @@ export function FluidWaterfall(props: FluidWaterfallProps) {
   );
 }
 
-const DEFAULT_FONT: FontConfig = {
-  family: "Helvetica",
-  size: 120,
-  weight: 600,
-};
-
 export const presetMeta = {
   id: "fluid-waterfall",
   name: "Fluid Waterfall",
