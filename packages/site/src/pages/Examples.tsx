@@ -4,13 +4,35 @@ import type { FontConfig } from "shaderui";
 import { UniformControls } from "../components/UniformControls";
 import { presetRegistry } from "../presets/registry";
 
-const FONT_FAMILIES = [
-  "Inter",
-  "Helvetica",
-  "Georgia",
-  "Arial",
-  "system-ui",
-  "sans-serif",
+const FONT_GROUPS: { label: string; fonts: string[] }[] = [
+  {
+    label: "Popular & system",
+    fonts: [
+      "Inter",
+      "Roboto",
+      "Open Sans",
+      "Lato",
+      "Montserrat",
+      "Poppins",
+      "Helvetica",
+      "Arial",
+      "Georgia",
+      "system-ui",
+      "sans-serif",
+    ],
+  },
+  {
+    label: "Display & distinctive",
+    fonts: ["Bebas Neue", "Oswald", "Space Grotesk", "Syne", "DM Serif Display"],
+  },
+  {
+    label: "Serif & elegant",
+    fonts: ["Playfair Display", "Cormorant Garamond", "Cinzel", "Raleway"],
+  },
+  {
+    label: "Script & casual",
+    fonts: ["Pacifico", "Lobster"],
+  },
 ];
 
 const panelStyle: CSSProperties = {
@@ -211,10 +233,14 @@ export function Examples() {
             onChange={(e) => updateActiveProp("font", { ...font, family: e.target.value })}
             style={inputStyle}
           >
-            {FONT_FAMILIES.map((f: string) => (
-              <option key={f} value={f}>
-                {f}
-              </option>
+            {FONT_GROUPS.map((group) => (
+              <optgroup key={group.label} label={group.label}>
+                {group.fonts.map((f) => (
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
           <div style={{ display: "flex", gap: 12, marginTop: 12, alignItems: "center" }}>

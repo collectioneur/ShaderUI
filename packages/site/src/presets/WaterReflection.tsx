@@ -17,7 +17,7 @@ import { collectUniformControls, type PresetMeta } from "./types";
 const NOISE_SCALE = 12;
 const HOVER_RADIUS = 0.5;
 /** Scale for fwidth-based antialiasing; larger = softer edge (e.g. 2.0 ≈ 1–2 px) */
-const FWIDTH_AA_SCALE = 2.0;
+const FWIDTH_AA_SCALE = 1.5;
 
 const U = defineUniforms({
   waterLevel: {
@@ -62,7 +62,11 @@ const U = defineUniforms({
       decimals: 3,
     },
   },
-  mouseUV: { schema: d.vec2f, value: d.vec2f(-2, -2), control: { editable: false } },
+  mouseUV: {
+    schema: d.vec2f,
+    value: d.vec2f(-2, -2),
+    control: { editable: false },
+  },
   time: { schema: d.f32, value: 0, control: { editable: false } },
 });
 
@@ -226,22 +230,16 @@ export function WaterReflection(props: WaterReflectionProps) {
   );
 }
 
-const DEFAULT_FONT: FontConfig = {
-  family: "Helvetica",
-  size: 120,
-  weight: 600,
-};
-
 export const presetMeta = {
   id: "water-reflection",
   name: "Water Reflection",
   component: WaterReflection,
   defaultProps: {
-    text: "Hello",
-    font: DEFAULT_FONT,
-    waterLevel: 0.5,
+    text: "Reflection",
+    font: { family: "Playfair Display", size: 120, weight: 900 },
+    waterLevel: 0.6,
     liquefaction: 0.03,
-    hoverSpread: 0.02,
+    hoverSpread: 0.1,
   },
   uniformControls: collectUniformControls(U.specs),
 } satisfies PresetMeta<WaterReflectionProps>;

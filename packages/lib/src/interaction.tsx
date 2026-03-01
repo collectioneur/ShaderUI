@@ -150,7 +150,9 @@ export function InteractionArea({ children, className, style }: InteractionAreaP
       const activePointerId = activePointerIdRef.current;
 
       if (activePointerId == null) {
-        if (!isInsideHost(event)) return;
+        const canBootstrapTracking =
+          event.pointerType === "mouse" || isInsideHost(event);
+        if (!canBootstrapTracking) return;
         activePointerIdRef.current = event.pointerId;
       }
 

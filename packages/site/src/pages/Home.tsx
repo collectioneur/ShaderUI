@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Waterfall } from "../presets/Waterfall";
+import { FluidWaterfall } from "../presets/FluidWaterfall";
 import { type FontConfig } from "shaderui";
 
 const MOBILE_BREAKPOINT = 768;
@@ -93,7 +93,7 @@ export function Home() {
             top: -titlePadding + 150,
           }}
         >
-          <Waterfall
+          <FluidWaterfall
             text="shaderUI"
             font={
               {

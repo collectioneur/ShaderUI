@@ -1,3 +1,6 @@
+/**
+ * Fluid Waterfall preset — spiral/fluid text effect with iridescence and distortion.
+ */
 import React, { useRef, useMemo, useEffect } from "react";
 import tgpu from "typegpu";
 import * as d from "typegpu/data";
@@ -20,7 +23,11 @@ import { collectUniformControls, type PresetMeta } from "./types";
 // Everything is packed into ONE WGSL struct → ONE GPU buffer → no WebGPU limit issues.
 const U = defineUniforms({
   // --- interaction ---
-  mouseUV: { schema: d.vec2f, value: d.vec2f(-2, -2), control: { editable: false } },
+  mouseUV: {
+    schema: d.vec2f,
+    value: d.vec2f(-2, -2),
+    control: { editable: false },
+  },
   time: { schema: d.f32, value: 0, control: { editable: false } },
 
   // --- SPIRAL_* controls global swirl shape, speed, and micro-perturbation ---
@@ -168,9 +175,9 @@ const U = defineUniforms({
   // --- SDF_* and AA_* control edge extraction and antialias softening ---
   SDF_ALPHA_EDGE_MAX: { schema: d.f32, value: 100.0 },
   SDF_ALPHA_EDGE_OFFSET: { schema: d.f32, value: 40.0 },
-  AA_FWIDTH_SCALE: { schema: d.f32, value: 1.5 },
+  AA_FWIDTH_SCALE: { schema: d.f32, value: 1.0 },
 
-  // --- COLOR_* defines the waterfall palette ---
+  // --- COLOR_* defines the fluid waterfall palette ---
   COLOR_PRIMARY: { schema: d.vec4f, value: d.vec4f(0.871, 0.267, 0.231, 1.0) },
   COLOR_SECONDARY: { schema: d.vec4f, value: d.vec4f(0.4, 0.0, 0.706, 1.0) },
   COLOR_TERTIARY: {
@@ -179,7 +186,7 @@ const U = defineUniforms({
   },
 });
 
-const waterFragment = tgpu["~unstable"].fragmentFn({
+const fluidWaterfallFragment = tgpu["~unstable"].fragmentFn({
   in: { uv: d.vec2f },
   out: d.vec4f,
 })(({ uv }) => {
@@ -237,10 +244,7 @@ const waterFragment = tgpu["~unstable"].fragmentFn({
     u.PAINT_CONTRAST_OFFSET;
   const paintRes = std.min(
     u.PAINT_MAX_RES,
-    std.max(
-      d.f32(0.0),
-      std.length(uvSpiral) * u.PAINT_RES_SCALE * contrastMod,
-    ),
+    std.max(d.f32(0.0), std.length(uvSpiral) * u.PAINT_RES_SCALE * contrastMod),
   );
   const circleSharpness = u.PAINT_CIRCLE_SHARPNESS;
   const c1p = std.max(
@@ -282,12 +286,20 @@ const waterFragment = tgpu["~unstable"].fragmentFn({
     u.IRIDESCENCE_BLEND23_END,
     tSmooth,
   );
-  const blend31 = std.smoothstep(u.IRIDESCENCE_BLEND31_START, d.f32(1.0), tSmooth);
+  const blend31 = std.smoothstep(
+    u.IRIDESCENCE_BLEND31_START,
+    d.f32(1.0),
+    tSmooth,
+  );
   const colorPrimary = u.COLOR_PRIMARY;
   const colorSecondary = u.COLOR_SECONDARY;
   const colorTertiary = u.COLOR_TERTIARY;
   const iridescent = std.mix(
-    std.mix(std.mix(colorPrimary, colorSecondary, blend12), colorTertiary, blend23),
+    std.mix(
+      std.mix(colorPrimary, colorSecondary, blend12),
+      colorTertiary,
+      blend23,
+    ),
     colorPrimary,
     blend31,
   );
@@ -298,10 +310,7 @@ const waterFragment = tgpu["~unstable"].fragmentFn({
   const c3pVec = d
     .vec4f(colorTertiary.x, colorTertiary.y, colorTertiary.z, colorPrimary.w)
     .mul(c3p);
-  const blend = colorPrimary
-    .mul(c1p)
-    .add(colorSecondary.mul(c2p))
-    .add(c3pVec);
+  const blend = colorPrimary.mul(c1p).add(colorSecondary.mul(c2p)).add(c3pVec);
   const baseColor = colorPrimary
     .mul(contrastFactor)
     .add(blend.mul(oneMinusCf))
@@ -313,7 +322,10 @@ const waterFragment = tgpu["~unstable"].fragmentFn({
   const noiseScale = u.DISTORTION_NOISE_SCALE;
   const noisePos = uv.mul(noiseScale);
 
-  const timeOffset = d.vec2f(d.f32(0.0), time * u.DISTORTION_TIME_OFFSET_Y_SPEED);
+  const timeOffset = d.vec2f(
+    d.f32(0.0),
+    time * u.DISTORTION_TIME_OFFSET_Y_SPEED,
+  );
   const noiseVal = perlin2d.sample(noisePos.add(timeOffset));
 
   const distFromCenter =
@@ -332,7 +344,8 @@ const waterFragment = tgpu["~unstable"].fragmentFn({
 
   const pullStrength = u.DISTORTION_PULL_STRENGTH;
 
-  const yDisplacement = dirToCenter * distortionMask * streakNoise * pullStrength;
+  const yDisplacement =
+    dirToCenter * distortionMask * streakNoise * pullStrength;
 
   const noiseValX = perlin2d.sample(uv.add(timeOffset));
   const distortionMaskX = std.smoothstep(
@@ -341,7 +354,8 @@ const waterFragment = tgpu["~unstable"].fragmentFn({
     distFromCenter,
   );
 
-  const xDisplacement = noiseValX * distortionMaskX * u.DISTORTION_X_DISPLACEMENT_SCALE;
+  const xDisplacement =
+    noiseValX * distortionMaskX * u.DISTORTION_X_DISPLACEMENT_SCALE;
 
   const flareMask = std.pow(distFromCenter, u.FLARE_MASK_POW);
 
@@ -398,7 +412,7 @@ const DEFAULT_PADDING = {
   paddingLeft: 150,
 } satisfies Padding;
 
-export interface WaterfallProps {
+export interface FluidWaterfallProps {
   text: string;
   font: FontConfig;
   padding?: Partial<Padding>;
@@ -412,7 +426,7 @@ export interface WaterfallProps {
   className?: string;
 }
 
-function WaterfallCanvas({
+function FluidWaterfallCanvas({
   text,
   font,
   padding = DEFAULT_PADDING,
@@ -424,7 +438,7 @@ function WaterfallCanvas({
   FLARE_STRENGTH = 0.5,
   style,
   className,
-}: WaterfallProps) {
+}: FluidWaterfallProps) {
   const interactionUniforms = useShaderInteractionUniforms();
   const timeRef = useRef(0);
   const spiralSpeedRef = useRef(SPIRAL_SPEED);
@@ -472,7 +486,7 @@ function WaterfallCanvas({
   return (
     <ShaderCanvas
       source={source}
-      fragment={waterFragment}
+      fragment={fluidWaterfallFragment}
       uniformBindingsRef={uniformBindings}
       padding={padding}
       style={style}
@@ -481,10 +495,10 @@ function WaterfallCanvas({
   );
 }
 
-export function Waterfall(props: WaterfallProps) {
+export function FluidWaterfall(props: FluidWaterfallProps) {
   return (
     <InteractionArea style={{ display: "inline-block" }}>
-      <WaterfallCanvas {...props} />
+      <FluidWaterfallCanvas {...props} />
     </InteractionArea>
   );
 }
@@ -496,18 +510,18 @@ const DEFAULT_FONT: FontConfig = {
 };
 
 export const presetMeta = {
-  id: "waterfall",
-  name: "Waterfall",
-  component: Waterfall,
+  id: "fluid-waterfall",
+  name: "Fluid Waterfall",
+  component: FluidWaterfall,
   defaultProps: {
-    text: "Hello",
-    font: DEFAULT_FONT,
-    SPIRAL_SPEED: 7.0,
-    SPIRAL_AMOUNT: 3.0,
-    PAINT_CONTRAST: 28.0,
-    IRIDESCENCE_MIX_FACTOR: 0.6,
-    DISTORTION_PULL_STRENGTH: 2.0,
-    FLARE_STRENGTH: 0.5,
+    text: "Waterfall",
+    font: { family: "Cormorant Garamond", size: 120, weight: 700 },
+    SPIRAL_SPEED: 17.5,
+    SPIRAL_AMOUNT: 0.0,
+    PAINT_CONTRAST: 9.0,
+    IRIDESCENCE_MIX_FACTOR: 0.0,
+    DISTORTION_PULL_STRENGTH: 0.9,
+    FLARE_STRENGTH: 0.0,
   },
   uniformControls: collectUniformControls(U.specs),
-} satisfies PresetMeta<WaterfallProps>;
+} satisfies PresetMeta<FluidWaterfallProps>;

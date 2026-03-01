@@ -1,9 +1,9 @@
 /**
- * Cloudy shape preset.
+ * Morphing Crystal preset.
  *
  * Inspired by https://github.com/collectioneur/cloudy-shader
  * — volumetric cloud look is approximated with 2D FBM-style noise (Perlin),
- *   then masked by the SDF so the cloud repeats the shape (text/glyph).
+ *   then masked by the SDF so the effect repeats the shape (text/glyph).
  *
  * No 3D raymarch or external noise texture; uses @typegpu/noise perlin2d
  * and distSampleLayout for the shape mask.
@@ -234,12 +234,26 @@ const U = defineUniforms({
     control: {
       editable: true,
       kind: "range",
-      label: "Parallax",
+      label: "Direction follow",
       min: 0,
       max: 1.25,
       step: 0.01,
       group: "Interaction",
       decimals: 2,
+    },
+  },
+  distortionStrength: {
+    schema: d.f32,
+    value: 1.0,
+    control: {
+      editable: true,
+      kind: "range",
+      label: "Distortion strength",
+      min: 0,
+      max: 4.0,
+      step: 0.001,
+      group: "Interaction",
+      decimals: 3,
     },
   },
   mouseUV: {
@@ -250,7 +264,7 @@ const U = defineUniforms({
   isPointerActive: { schema: d.f32, value: 0, control: { editable: false } },
 });
 
-const cloudyFragment = tgpu["~unstable"].fragmentFn({
+const morphingCrystalFragment = tgpu["~unstable"].fragmentFn({
   in: { uv: d.vec2f },
   out: d.vec4f,
 })(({ uv }) => {
@@ -272,6 +286,7 @@ const cloudyFragment = tgpu["~unstable"].fragmentFn({
   const cloudContrast = u.cloudContrast;
   const warmTint = u.warmTint;
   const parallaxIntensity = u.parallaxIntensity;
+  const distortionStrength = u.distortionStrength;
   const mouseUV = u.mouseUV;
   const isPointerActive = u.isPointerActive;
 
@@ -337,10 +352,19 @@ const cloudyFragment = tgpu["~unstable"].fragmentFn({
   );
 
   const pointer = std.sub(mouseUV, d.vec2f(0.5, 0.5));
-  const pointerGain = std.mul(parallaxIntensity, isPointerActive);
+  const pointerDir = std.normalize(std.add(pointer, d.vec2f(0.0001, 0.0001)));
+  const baseFlowDir = std.normalize(d.vec2f(0.92, -0.35));
+  const directionFollow = std.clamp(
+    std.mul(parallaxIntensity, isPointerActive),
+    d.f32(0.0),
+    d.f32(1.0),
+  );
+  const distortionDir = std.normalize(
+    std.mix(baseFlowDir, pointerDir, directionFollow),
+  );
   const parallaxOffset = std.mul(
-    pointer,
-    std.mul(pointerGain, std.mix(d.f32(0.12), d.f32(0.045), volumeMask)),
+    distortionDir,
+    std.mul(distortionStrength, std.mix(d.f32(0.12), d.f32(0.045), volumeMask)),
   );
   const sampleUv = std.add(uv, parallaxOffset);
 
@@ -584,7 +608,7 @@ const DEFAULT_PADDING = {
   paddingLeft: 150,
 } satisfies Padding;
 
-export interface CloudyShapeProps {
+export interface MorphingCrystalProps {
   text: string;
   font: FontConfig;
   padding?: Partial<Padding>;
@@ -603,11 +627,12 @@ export interface CloudyShapeProps {
   cloudContrast?: number;
   warmTint?: number;
   parallaxIntensity?: number;
+  distortionStrength?: number;
   style?: React.CSSProperties;
   className?: string;
 }
 
-function CloudyShapeCanvas({
+function MorphingCrystalCanvas({
   text,
   font,
   padding = DEFAULT_PADDING,
@@ -626,9 +651,10 @@ function CloudyShapeCanvas({
   cloudContrast = 1.18,
   warmTint = 0.62,
   parallaxIntensity = 0.38,
+  distortionStrength = 0.065,
   style,
   className,
-}: CloudyShapeProps) {
+}: MorphingCrystalProps) {
   const interaction = useShaderInteractionUniforms();
   const cloudDensityRef = useRef(cloudDensity);
   const cloudSpeedRef = useRef(cloudSpeed);
@@ -645,6 +671,7 @@ function CloudyShapeCanvas({
   const cloudContrastRef = useRef(cloudContrast);
   const warmTintRef = useRef(warmTint);
   const parallaxIntensityRef = useRef(parallaxIntensity);
+  const distortionStrengthRef = useRef(distortionStrength);
   cloudDensityRef.current = cloudDensity;
   cloudSpeedRef.current = cloudSpeed;
   dynamicityRef.current = dynamicity;
@@ -660,6 +687,7 @@ function CloudyShapeCanvas({
   cloudContrastRef.current = cloudContrast;
   warmTintRef.current = warmTint;
   parallaxIntensityRef.current = parallaxIntensity;
+  distortionStrengthRef.current = distortionStrength;
 
   const timeRef = useRef(0);
   useEffect(() => {
@@ -690,6 +718,7 @@ function CloudyShapeCanvas({
       cloudContrast: () => cloudContrastRef.current,
       warmTint: () => warmTintRef.current,
       parallaxIntensity: () => parallaxIntensityRef.current,
+      distortionStrength: () => distortionStrengthRef.current,
       mouseUV: interaction.mouseUV,
       isPointerActive: interaction.isPointerActive,
     }),
@@ -703,7 +732,7 @@ function CloudyShapeCanvas({
   return (
     <ShaderCanvas
       source={source}
-      fragment={cloudyFragment}
+      fragment={morphingCrystalFragment}
       uniformBindingsRef={uniformBindings}
       padding={padding}
       style={style}
@@ -712,10 +741,10 @@ function CloudyShapeCanvas({
   );
 }
 
-export function CloudyShape(props: CloudyShapeProps) {
+export function MorphingCrystal(props: MorphingCrystalProps) {
   return (
     <InteractionArea style={{ display: "inline-block" }}>
-      <CloudyShapeCanvas {...props} />
+      <MorphingCrystalCanvas {...props} />
     </InteractionArea>
   );
 }
@@ -727,12 +756,12 @@ const DEFAULT_FONT: FontConfig = {
 };
 
 export const presetMeta = {
-  id: "cloudy-shape",
-  name: "Cloudy Shape",
-  component: CloudyShape,
+  id: "morphing-crystal",
+  name: "Morphing Crystal",
+  component: MorphingCrystal,
   defaultProps: {
-    text: "Cloud",
-    font: DEFAULT_FONT,
+    text: "Crystal",
+    font: { family: "Playfair Display", size: 120, weight: 900 },
     cloudDensity: 1.0,
     cloudSpeed: 0.3,
     dynamicity: 1.14,
@@ -747,7 +776,8 @@ export const presetMeta = {
     lightStep: 0.018,
     cloudContrast: 0.74,
     warmTint: 0.62,
-    parallaxIntensity: 4.0,
+    parallaxIntensity: 1.25,
+    distortionStrength: 1.0,
   },
   uniformControls: collectUniformControls(U.specs),
-} satisfies PresetMeta<CloudyShapeProps>;
+} satisfies PresetMeta<MorphingCrystalProps>;
