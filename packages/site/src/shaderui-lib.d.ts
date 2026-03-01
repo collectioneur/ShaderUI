@@ -1,5 +1,5 @@
 declare module "shaderui" {
-  import type { CSSProperties, RefObject } from "react";
+  import type { CSSProperties, MutableRefObject, ReactNode, RefObject } from "react";
 
   export interface FontConfig {
     family: string;
@@ -117,4 +117,49 @@ declare module "shaderui" {
   export const paramsAccessor: unknown;
   export const timeAccessor: unknown;
   export type VisualizationParams = unknown;
+
+  export type InteractionPointerTypeCode = 0 | 1 | 2 | 3;
+
+  export interface InteractionSnapshot {
+    mouseUV: [number, number];
+    pointerDownUV: [number, number];
+    pointerDeltaUV: [number, number];
+    pointerVelocityUV: [number, number];
+    isPointerActive: number;
+    isPointerDown: number;
+    pointerType: InteractionPointerTypeCode;
+    pressure: number;
+  }
+
+  export interface InteractionAreaProps {
+    children: ReactNode;
+    className?: string;
+    style?: CSSProperties;
+  }
+
+  export const OFFSCREEN_POINTER_UV: [number, number];
+
+  export function InteractionArea(props: InteractionAreaProps): JSX.Element;
+
+  export function useInteraction(): {
+    snapshotRef: MutableRefObject<InteractionSnapshot>;
+    getSnapshot: () => InteractionSnapshot;
+  };
+
+  export function createShaderInteractionGetters(
+    snapshotRef: MutableRefObject<InteractionSnapshot>,
+  ): {
+    mouseUV: () => unknown;
+    pointerDownUV: () => unknown;
+    pointerDeltaUV: () => unknown;
+    pointerVelocityUV: () => unknown;
+    isPointerActive: () => number;
+    isPointerDown: () => number;
+    pointerType: () => InteractionPointerTypeCode;
+    pressure: () => number;
+  };
+
+  export function useShaderInteractionUniforms(): ReturnType<
+    typeof createShaderInteractionGetters
+  >;
 }

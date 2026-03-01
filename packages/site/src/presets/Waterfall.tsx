@@ -1,12 +1,14 @@
-import React, { useRef, useMemo, useCallback, useEffect } from "react";
+import React, { useRef, useMemo, useEffect } from "react";
 import tgpu from "typegpu";
 import * as d from "typegpu/data";
 import * as std from "typegpu/std";
 import { perlin2d } from "@typegpu/noise";
 import {
+  InteractionArea,
   ShaderCanvas,
   distSampleLayout,
   defineUniforms,
+  useShaderInteractionUniforms,
   type FontConfig,
   type Padding,
 } from "shaderui";
@@ -410,7 +412,7 @@ export interface WaterfallProps {
   className?: string;
 }
 
-export function Waterfall({
+function WaterfallCanvas({
   text,
   font,
   padding = DEFAULT_PADDING,
@@ -423,7 +425,7 @@ export function Waterfall({
   style,
   className,
 }: WaterfallProps) {
-  const mouseUVRef = useRef<[number, number]>([-2, -2]);
+  const interactionUniforms = useShaderInteractionUniforms();
   const timeRef = useRef(0);
   const spiralSpeedRef = useRef(SPIRAL_SPEED);
   spiralSpeedRef.current = SPIRAL_SPEED;
@@ -448,27 +450,11 @@ export function Waterfall({
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const el = containerRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
-    mouseUVRef.current = [x, y];
-  }, []);
-  const handleMouseLeave = useCallback(() => {
-    mouseUVRef.current = [-2, -2];
-  }, []);
-
   // Runtime-controlled uniforms use getters so slider changes apply immediately.
   const uniformBindings = useRef(
     U.createBindings({
       time: () => timeRef.current,
-      mouseUV: () => {
-        const [x, y] = mouseUVRef.current;
-        return d.vec2f(x, y);
-      },
+      mouseUV: interactionUniforms.mouseUV,
       SPIRAL_SPEED: () => spiralSpeedRef.current,
       SPIRAL_AMOUNT: () => spiralAmountRef.current,
       PAINT_CONTRAST: () => paintContrastRef.current,
@@ -484,21 +470,22 @@ export function Waterfall({
   );
 
   return (
-    <div
-      ref={containerRef}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      style={{ display: "inline-block" }}
-    >
-      <ShaderCanvas
-        source={source}
-        fragment={waterFragment}
-        uniformBindingsRef={uniformBindings}
-        padding={padding}
-        style={style}
-        className={className}
-      />
-    </div>
+    <ShaderCanvas
+      source={source}
+      fragment={waterFragment}
+      uniformBindingsRef={uniformBindings}
+      padding={padding}
+      style={style}
+      className={className}
+    />
+  );
+}
+
+export function Waterfall(props: WaterfallProps) {
+  return (
+    <InteractionArea style={{ display: "inline-block" }}>
+      <WaterfallCanvas {...props} />
+    </InteractionArea>
   );
 }
 

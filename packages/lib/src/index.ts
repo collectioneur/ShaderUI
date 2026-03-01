@@ -21,3 +21,13 @@ export {
   type FontConfig,
   type MaskSource,
 } from "./types.ts";
+export {
+  InteractionArea,
+  useInteraction,
+  createShaderInteractionGetters,
+  useShaderInteractionUniforms,
+  OFFSCREEN_POINTER_UV,
+  type InteractionAreaProps,
+  type InteractionSnapshot,
+  type InteractionPointerTypeCode,
+} from "./interaction.tsx";

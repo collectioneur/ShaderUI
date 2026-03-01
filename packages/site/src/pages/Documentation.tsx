@@ -55,7 +55,7 @@ export function Documentation() {
       <section style={sectionStyle}>
         <h2 style={h2Style}>Customizing existing examples</h2>
         <p style={pStyle}>
-          Placeholder: how to fork a preset (e.g. NeonText), change parameters, and adapt the shader to your needs.
+          Placeholder: how to fork a preset (e.g. WaterReflection), change parameters, and adapt the shader to your needs.
         </p>
       </section>
 

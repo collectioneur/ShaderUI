@@ -1,12 +1,14 @@
-import React, { useRef, useMemo, useCallback, useEffect } from "react";
+import React, { useRef, useMemo, useEffect } from "react";
 import tgpu from "typegpu";
 import * as d from "typegpu/data";
 import * as std from "typegpu/std";
 import { perlin2d } from "@typegpu/noise";
 import {
+  InteractionArea,
   ShaderCanvas,
   defineUniforms,
   distSampleLayout,
+  useShaderInteractionUniforms,
   type FontConfig,
   type Padding,
 } from "shaderui";
@@ -148,7 +150,7 @@ const DEFAULT_PADDING = {
   paddingLeft: 150,
 } satisfies Padding;
 
-export interface NeonTextProps {
+export interface WaterReflectionProps {
   text: string;
   font: FontConfig;
   padding?: Partial<Padding>;
@@ -159,7 +161,7 @@ export interface NeonTextProps {
   className?: string;
 }
 
-export function NeonText({
+function WaterReflectionCanvas({
   text,
   font,
   padding = DEFAULT_PADDING,
@@ -168,7 +170,8 @@ export function NeonText({
   hoverSpread = 0.02,
   style,
   className,
-}: NeonTextProps) {
+}: WaterReflectionProps) {
+  const interactionUniforms = useShaderInteractionUniforms();
   const waterLevelRef = useRef(waterLevel);
   waterLevelRef.current = waterLevel;
   const liquefactionRef = useRef(liquefaction);
@@ -176,7 +179,6 @@ export function NeonText({
   const hoverSpreadRef = useRef(hoverSpread);
   hoverSpreadRef.current = hoverSpread;
 
-  const mouseUVRef = useRef<[number, number]>([-2, -2]);
   const timeRef = useRef(0);
 
   useEffect(() => {
@@ -189,29 +191,13 @@ export function NeonText({
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const el = containerRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
-    mouseUVRef.current = [x, y];
-  }, []);
-  const handleMouseLeave = useCallback(() => {
-    mouseUVRef.current = [-2, -2];
-  }, []);
-
   const uniformBindings = useRef(
     U.createBindings({
       waterLevel: () => waterLevelRef.current,
       liquefaction: () => liquefactionRef.current,
       hoverSpread: () => hoverSpreadRef.current,
       time: () => timeRef.current,
-      mouseUV: () => {
-        const [x, y] = mouseUVRef.current;
-        return d.vec2f(x, y);
-      },
+      mouseUV: interactionUniforms.mouseUV,
     }),
   );
 
@@ -221,21 +207,22 @@ export function NeonText({
   );
 
   return (
-    <div
-      ref={containerRef}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      style={{ display: "inline-block" }}
-    >
-      <ShaderCanvas
-        source={source}
-        fragment={waterFragment}
-        uniformBindingsRef={uniformBindings}
-        padding={padding}
-        style={style}
-        className={className}
-      />
-    </div>
+    <ShaderCanvas
+      source={source}
+      fragment={waterFragment}
+      uniformBindingsRef={uniformBindings}
+      padding={padding}
+      style={style}
+      className={className}
+    />
+  );
+}
+
+export function WaterReflection(props: WaterReflectionProps) {
+  return (
+    <InteractionArea style={{ display: "inline-block" }}>
+      <WaterReflectionCanvas {...props} />
+    </InteractionArea>
   );
 }
 
@@ -246,9 +233,9 @@ const DEFAULT_FONT: FontConfig = {
 };
 
 export const presetMeta = {
-  id: "neon",
-  name: "Neon Text",
-  component: NeonText,
+  id: "water-reflection",
+  name: "Water Reflection",
+  component: WaterReflection,
   defaultProps: {
     text: "Hello",
     font: DEFAULT_FONT,
@@ -257,4 +244,4 @@ export const presetMeta = {
     hoverSpread: 0.02,
   },
   uniformControls: collectUniformControls(U.specs),
-} satisfies PresetMeta<NeonTextProps>;
+} satisfies PresetMeta<WaterReflectionProps>;
