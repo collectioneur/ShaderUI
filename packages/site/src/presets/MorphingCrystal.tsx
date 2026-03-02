@@ -603,9 +603,9 @@ const morphingCrystalFragment = tgpu["~unstable"].fragmentFn({
 });
 
 const DEFAULT_PADDING = {
-  paddingTop: 10,
+  paddingTop: 20,
   paddingRight: 10,
-  paddingBottom: 10,
+  paddingBottom: 20,
   paddingLeft: 10,
 } satisfies Padding;
 
