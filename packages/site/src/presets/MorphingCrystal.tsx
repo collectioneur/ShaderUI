@@ -776,7 +776,7 @@ export const presetMeta = {
     cloudContrast: 0.74,
     warmTint: 0.62,
     parallaxIntensity: 1.25,
-    distortionStrength: 1.0,
+    distortionStrength: 4.0,
   },
   uniformControls: collectUniformControls(U.specs),
 } satisfies PresetMeta<MorphingCrystalProps>;
