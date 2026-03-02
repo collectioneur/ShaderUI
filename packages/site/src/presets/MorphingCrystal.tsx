@@ -24,11 +24,11 @@ import {
 } from "shaderui";
 import { collectUniformControls, type PresetMeta } from "./types";
 
-const NOISE_SCALE = 4.0;
-const FBM_LAYERS = 6;
+const NOISE_SCALE = 1.0;
+const FBM_LAYERS = 1.0;
 const FWIDTH_AA_SCALE = 1.5;
-const SDF_GRAD_STEP = 0.8;
-const LIGHT_STEPS = 6;
+const SDF_GRAD_STEP = 1.0;
+const LIGHT_STEPS = 1;
 
 const U = defineUniforms({
   time: { schema: d.f32, value: 0, control: { editable: false } },
@@ -295,6 +295,7 @@ const morphingCrystalFragment = tgpu["~unstable"].fragmentFn({
     distSampleLayout.$.sampler,
     uv,
   ).x;
+
   const thicknessPx = std.max(d.f32(0.75), std.mul(thickness, d.f32(220.0)));
   const fwidthDist = std.fwidth(distCenter);
   const shapeAlpha = std.sub(
@@ -602,10 +603,10 @@ const morphingCrystalFragment = tgpu["~unstable"].fragmentFn({
 });
 
 const DEFAULT_PADDING = {
-  paddingTop: 150,
-  paddingRight: 150,
-  paddingBottom: 150,
-  paddingLeft: 150,
+  paddingTop: 10,
+  paddingRight: 10,
+  paddingBottom: 10,
+  paddingLeft: 10,
 } satisfies Padding;
 
 export interface MorphingCrystalProps {
@@ -755,7 +756,11 @@ export const presetMeta = {
   component: MorphingCrystal,
   defaultProps: {
     text: "Crystal",
-    font: { family: "Playfair Display", size: 120, weight: 900 },
+    font: {
+      family: "Playfair Display",
+      size: window.innerWidth > 768 ? 120 : 80,
+      weight: 900,
+    },
     cloudDensity: 1.0,
     cloudSpeed: 0.3,
     dynamicity: 1.14,

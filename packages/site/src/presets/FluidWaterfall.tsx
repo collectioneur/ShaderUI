@@ -509,7 +509,11 @@ export const presetMeta = {
   component: FluidWaterfall,
   defaultProps: {
     text: "Waterfall",
-    font: { family: "Cormorant Garamond", size: 120, weight: 700 },
+    font: {
+      family: "Cormorant Garamond",
+      size: window.innerWidth > 768 ? 120 : 60,
+      weight: 700,
+    },
     SPIRAL_SPEED: 17.5,
     SPIRAL_AMOUNT: 0.0,
     PAINT_CONTRAST: 9.0,

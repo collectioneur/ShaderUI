@@ -23,7 +23,13 @@ const FONT_GROUPS: { label: string; fonts: string[] }[] = [
   },
   {
     label: "Display & distinctive",
-    fonts: ["Bebas Neue", "Oswald", "Space Grotesk", "Syne", "DM Serif Display"],
+    fonts: [
+      "Bebas Neue",
+      "Oswald",
+      "Space Grotesk",
+      "Syne",
+      "DM Serif Display",
+    ],
   },
   {
     label: "Serif & elegant",
@@ -38,6 +44,7 @@ const FONT_GROUPS: { label: string; fonts: string[] }[] = [
 const panelStyle: CSSProperties = {
   width: 280,
   padding: 20,
+  height: "100%",
   overflowY: "auto",
   background: "var(--bg-elevated)",
   borderLeft: "1px solid rgba(255,255,255,0.06)",
@@ -99,7 +106,8 @@ export function Examples() {
   const activePreset = useMemo(() => {
     if (presetRegistry.length === 0) return null;
     return (
-      presetRegistry.find((preset) => preset.id === activeExampleId) ?? presetRegistry[0]
+      presetRegistry.find((preset) => preset.id === activeExampleId) ??
+      presetRegistry[0]
     );
   }, [activeExampleId]);
 
@@ -114,13 +122,20 @@ export function Examples() {
     if (!raw || typeof raw !== "object") return fallback;
     const candidate = raw as Partial<FontConfig>;
     return {
-      family: typeof candidate.family === "string" ? candidate.family : fallback.family,
+      family:
+        typeof candidate.family === "string"
+          ? candidate.family
+          : fallback.family,
       size: typeof candidate.size === "number" ? candidate.size : fallback.size,
-      weight: typeof candidate.weight === "number" ? candidate.weight : fallback.weight,
+      weight:
+        typeof candidate.weight === "number"
+          ? candidate.weight
+          : fallback.weight,
     };
   }, [activeProps.font]);
 
-  const text = typeof activeProps.text === "string" ? activeProps.text : "Hello";
+  const text =
+    typeof activeProps.text === "string" ? activeProps.text : "Hello";
 
   const updateActiveProp = useCallback(
     (key: string, value: unknown) => {
@@ -154,7 +169,9 @@ export function Examples() {
     );
   }
 
-  const ActivePreset = activePreset.component as ComponentType<Record<string, unknown>>;
+  const ActivePreset = activePreset.component as ComponentType<
+    Record<string, unknown>
+  >;
 
   return (
     <div
@@ -162,8 +179,9 @@ export function Examples() {
       style={{
         display: "flex",
         flex: 1,
-        minHeight: "calc(100vh - 60px)",
+        height: "calc(100vh - 60px)",
         minWidth: 0,
+        overflow: "hidden",
       }}
     >
       <div
@@ -172,6 +190,7 @@ export function Examples() {
           flex: 1,
           minWidth: 0,
           minHeight: 0,
+          maxHeight: "calc(100vh - 60px)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -179,14 +198,21 @@ export function Examples() {
           padding: 24,
         }}
       >
-        <div style={{ width: "100%", height: "100%", maxWidth: 800 }}>
+        <div
+          style={{
+            width: "100%",
+            height: "100%",
+            maxWidth: 800,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
           <ActivePreset
             {...activeProps}
             text={text}
             font={font}
             style={{
-              width: "100%",
-              height: "100%",
               backgroundColor: "transparent",
             }}
           />
@@ -216,7 +242,6 @@ export function Examples() {
 
         <div>
           <h3 style={sectionTitleStyle}>Text</h3>
-          <label style={labelStyle}>Content</label>
           <input
             type="text"
             value={text}
@@ -227,10 +252,11 @@ export function Examples() {
 
         <div>
           <h3 style={sectionTitleStyle}>Font</h3>
-          <label style={labelStyle}>Family</label>
           <select
             value={font.family}
-            onChange={(e) => updateActiveProp("font", { ...font, family: e.target.value })}
+            onChange={(e) =>
+              updateActiveProp("font", { ...font, family: e.target.value })
+            }
             style={inputStyle}
           >
             {FONT_GROUPS.map((group) => (
@@ -243,7 +269,14 @@ export function Examples() {
               </optgroup>
             ))}
           </select>
-          <div style={{ display: "flex", gap: 12, marginTop: 12, alignItems: "center" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 12,
+              marginTop: 12,
+              alignItems: "center",
+            }}
+          >
             <div>
               <label style={{ ...labelStyle, marginBottom: 4 }}>Size</label>
               <input
@@ -285,7 +318,9 @@ export function Examples() {
           <UniformControls
             controls={activePreset.uniformControls}
             values={activeProps}
-            onValueChange={(uniformKey, value) => updateActiveProp(uniformKey, value)}
+            onValueChange={(uniformKey, value) =>
+              updateActiveProp(uniformKey, value)
+            }
           />
         </div>
       </aside>

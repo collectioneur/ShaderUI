@@ -149,9 +149,9 @@ const waterFragment = tgpu["~unstable"].fragmentFn({
 
 const DEFAULT_PADDING = {
   paddingTop: 150,
-  paddingRight: 150,
+  paddingRight: 50,
   paddingBottom: 150,
-  paddingLeft: 150,
+  paddingLeft: 50,
 } satisfies Padding;
 
 export interface WaterReflectionProps {
@@ -236,7 +236,11 @@ export const presetMeta = {
   component: WaterReflection,
   defaultProps: {
     text: "Reflection",
-    font: { family: "Playfair Display", size: 120, weight: 900 },
+    font: {
+      family: "Raleway",
+      size: window.innerWidth > 768 ? 120 : 60,
+      weight: 900,
+    },
     waterLevel: 0.6,
     liquefaction: 0.03,
     hoverSpread: 0.1,
